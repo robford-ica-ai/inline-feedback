@@ -15,7 +15,7 @@ class TestExtensionIntegration:
 
         assert manifest_path.exists(), "manifest.json should exist"
 
-        with open(manifest_path, encoding='utf-8') as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
 
         # Required fields
@@ -41,7 +41,7 @@ class TestExtensionIntegration:
         required_files = [
             "manifest.json",
             "content/content-script.js",
-            "ontology/medical-materials.js"
+            "ontology/medical-materials.js",
         ]
 
         for file_name in required_files:
@@ -56,7 +56,7 @@ class TestExtensionIntegration:
 
         assert content_path.exists(), "content-script.js should exist"
 
-        with open(content_path, encoding='utf-8') as f:
+        with open(content_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check for basic structure
@@ -70,7 +70,7 @@ class TestExtensionIntegration:
         if not popup_path.exists():
             pytest.skip("popup.html not implemented yet")
 
-        with open(popup_path, encoding='utf-8') as f:
+        with open(popup_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check for essential elements
@@ -84,7 +84,7 @@ class TestExtensionIntegration:
 
         assert ontology_path.exists(), "medical-materials.js should exist"
 
-        with open(ontology_path, encoding='utf-8') as f:
+        with open(ontology_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check for key materials
@@ -103,7 +103,7 @@ class TestExtensionIntegration:
 
         assert build_path.exists(), "build.js should exist"
 
-        with open(build_path, encoding='utf-8') as f:
+        with open(build_path, encoding="utf-8") as f:
             content = f.read()
 
         assert "copyFile" in content
@@ -115,7 +115,7 @@ class TestExtensionIntegration:
 
         assert package_path.exists(), "package.json should exist"
 
-        with open(package_path, encoding='utf-8') as f:
+        with open(package_path, encoding="utf-8") as f:
             package = json.load(f)
 
         # Required fields
@@ -150,7 +150,7 @@ class TestExtensionBuild:
             # If dist exists, check it has manifest
             manifest_path = dist_path / "manifest.json"
             if manifest_path.exists():
-                with open(manifest_path, encoding='utf-8') as f:
+                with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
                 assert "name" in manifest
 

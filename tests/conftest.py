@@ -32,18 +32,9 @@ def sample_manifest() -> dict[str, Any]:
         "name": "Inline Feedback",
         "version": "1.0.0",
         "permissions": ["activeTab", "storage", "scripting"],
-        "content_scripts": [
-            {
-                "matches": ["<all_urls>"],
-                "js": ["content.js"]
-            }
-        ],
-        "background": {
-            "service_worker": "background.js"
-        },
-        "action": {
-            "default_popup": "popup.html"
-        }
+        "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"]}],
+        "background": {"service_worker": "background.js"},
+        "action": {"default_popup": "popup.html"},
     }
 
 
@@ -51,22 +42,14 @@ def sample_manifest() -> dict[str, Any]:
 def sample_claude_response() -> dict[str, Any]:
     """Sample Claude API response for testing."""
     return {
-        "content": [
-            {
-                "text": "Medical device",
-                "type": "text"
-            }
-        ],
+        "content": [{"text": "Medical device", "type": "text"}],
         "id": "msg_test123",
         "model": "claude-3-sonnet-20240229",
         "role": "assistant",
         "stop_reason": "end_turn",
         "stop_sequence": None,
         "type": "message",
-        "usage": {
-            "input_tokens": 10,
-            "output_tokens": 5
-        }
+        "usage": {"input_tokens": 10, "output_tokens": 5},
     }
 
 
@@ -84,12 +67,12 @@ def sample_medical_materials() -> dict[str, dict[str, Any]]:
             "name": "Titanium",
             "description": "Biocompatible metal commonly used in implants",
             "uses": ["orthopedic implants", "dental implants"],
-            "properties": ["biocompatible", "corrosion resistant"]
+            "properties": ["biocompatible", "corrosion resistant"],
         },
         "PEEK": {
             "name": "Polyetheretherketone",
             "description": "High-performance thermoplastic polymer",
             "uses": ["spinal implants", "orthopedic devices"],
-            "properties": ["radiolucent", "biocompatible"]
-        }
+            "properties": ["radiolucent", "biocompatible"],
+        },
     }
