@@ -32,14 +32,14 @@ jobs:
         run: npm run package
       
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: extension-build
           path: dist/
           retention-days: 30
       
       - name: Upload packaged extension
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: extension-package
           path: packages/
