@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-eslint",
+    "redhat.vscode-yaml",
+    "eamodio.gitlens",
+    "streetsidesoftware.code-spell-checker",
+    "tamasfe.even-better-toml",
+    "ms-vscode.test-adapter-converter",
+    "ms-vscode.extension-test-runner"
+  ]
+} 

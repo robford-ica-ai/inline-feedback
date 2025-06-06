@@ -1,0 +1,45 @@
+{
+  "name": "inline-feedback",
+  "version": "1.0.0",
+  "description": "AI-powered inline feedback Chrome extension with medical materials ontology",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/build.js --watch",
+    "build": "node scripts/build.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "uv run pytest tests/unit/",
+    "test:integration": "uv run pytest tests/integration/",
+    "lint": "npm run lint:js && npm run lint:py",
+    "lint:js": "eslint src/ --ext .js",
+    "lint:py": "uv run ruff check .",
+    "format": "npm run format:js && npm run format:py",
+    "format:js": "prettier --write src/",
+    "format:py": "uv run black . && uv run isort .",
+    "type-check": "uv run mypy .",
+    "package": "node scripts/package.js",
+    "release": "npm run build && npm run test && npm run package"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "web-ext": "^7.11.0",
+    "archiver": "^6.0.1",
+    "chokidar": "^3.6.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "claude",
+    "pdf",
+    "medical",
+    "ontology",
+    "translation"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+} 
