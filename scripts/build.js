@@ -82,10 +82,17 @@ class ExtensionBuilder {
       'content/pdf-extractor.js',
       'content/ontology-highlighter.js',
       'content/ui-feedback.js',
+      'content/selection-handler.js',
       'popup/popup.js',
+      'ontology/enhanced-medical-ontology.js',
+      'ontology/research-evidence-db.js',
       'ontology/medical-materials.js',
       'ontology/medical-devices.js',
-      'ontology/base-ontology.js'
+      'ontology/base-ontology.js',
+      'debbie-integration/debbie-api-client.js',
+      'debbie-integration/owl2dict-converter.js',
+      'debbie-integration/gold-standard-pmid-loader.js',
+      'debbie-integration/project-debbie-coordinator.js'
     ];
 
     for (const file of jsFiles) {

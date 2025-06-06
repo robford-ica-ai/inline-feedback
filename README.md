@@ -141,14 +141,24 @@ CHROME_WEB_STORE_REFRESH_TOKEN=your_refresh_token
 ### Unit Tests
 
 ```bash
-# Run Python unit tests
-npm run test
+# Navigate to project directory first!
+cd /Users/robertford/Repos/inline-feedback
+
+# Run all tests (simple)
+npm test
+
+# Run all tests (verbose with test names)
+uv run pytest tests/ -v
 
 # Run specific test file
-uv run pytest tests/test_ontology.py -v
+uv run pytest tests/test_extension.py -v
+
+# Run specific test by name
+uv run pytest tests/test_extension.py::TestExtensionIntegration::test_manifest_validation -v
 
 # Run with coverage
 uv run pytest tests/ --cov=src --cov-report=html
+
 ```
 
 ### Integration Tests
