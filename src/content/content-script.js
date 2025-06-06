@@ -94,25 +94,43 @@ class InlineFeedbackExtension {
     }
 
     async initializeComponents() {
+        // Define available components
         const componentFactories = {
-            'uiFeedback': () => new UIFeedback(),
-            'pdfExtractor': () => new PDFExtractor(),
-            'ontologyHighlighter': () => new OntologyHighlighter(window.MedicalMaterialsOntology),
-            'selectionHandler': () => new SelectionHandler(this)
+            'uiFeedback': () => typeof UIFeedback !== 'undefined' ? new UIFeedback() : null,
+            'ontologyHighlighter': () => typeof OntologyHighlighter !== 'undefined' ? 
+                new OntologyHighlighter(window.MedicalMaterialsOntology || window.EnhancedMedicalOntology) : null,
+            'selectionHandler': () => typeof SelectionHandler !== 'undefined' ? new SelectionHandler(this) : null
         };
 
+        // Only initialize PDF extractor on PDF pages
+        if (this.isPDFPage() && typeof PDFExtractor !== 'undefined') {
+            componentFactories['pdfExtractor'] = () => new PDFExtractor();
+        }
+
+        // Initialize components with robust error handling
         for (const [name, factory] of Object.entries(componentFactories)) {
             try {
                 const component = factory();
+                if (!component) {
+                    this.logger.warn(`Component ${name} not available, skipping...`);
+                    continue;
+                }
+
                 if (component.init) {
                     await component.init();
                 }
                 this.components.set(name, component);
-                this.logger.debug(`Component ${name} initialized`);
+                this.logger.debug(`Component ${name} initialized successfully`);
             } catch (error) {
                 this.logger.error(`Failed to initialize ${name}:`, error);
-                throw new ComponentError(`Component ${name} failed`, error);
+                // Don't throw - continue with other components
+                continue;
             }
+        }
+
+        // Ensure we have at least some basic functionality
+        if (this.components.size === 0) {
+            this.logger.warn('No components initialized, extension will have limited functionality');
         }
     }
 
@@ -165,10 +183,64 @@ class InlineFeedbackExtension {
 
         if (text.length > 0 && text.length < 500) {
             const selectionHandler = this.components.get('selectionHandler');
-            if (selectionHandler) {
-                selectionHandler.showSelectionMenu(selection, text);
+            if (selectionHandler && selectionHandler.showSelectionMenu) {
+                try {
+                    selectionHandler.showSelectionMenu(selection, text);
+                } catch (error) {
+                    this.logger.debug('Selection handler failed:', error);
+                    // Fallback: basic context menu
+                    this.showBasicSelectionMenu(selection, text);
+                }
+            } else {
+                // Fallback: basic context menu
+                this.showBasicSelectionMenu(selection, text);
             }
         }
+    }
+
+    showBasicSelectionMenu(selection, text) {
+        // Simple fallback context menu
+        const menu = document.createElement('div');
+        menu.style.cssText = `
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10000;
+            font-family: -apple-system, system-ui, sans-serif;
+            font-size: 14px;
+        `;
+        
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        menu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+        menu.style.left = (rect.left + window.scrollX) + 'px';
+
+        const translateBtn = document.createElement('button');
+        translateBtn.textContent = 'Translate';
+        translateBtn.style.cssText = 'margin: 2px; padding: 4px 8px; border: none; background: #007cba; color: white; border-radius: 3px; cursor: pointer;';
+        translateBtn.onclick = () => {
+            this.processSelection('translate', text);
+            menu.remove();
+        };
+
+        const explainBtn = document.createElement('button');
+        explainBtn.textContent = 'Explain';
+        explainBtn.style.cssText = 'margin: 2px; padding: 4px 8px; border: none; background: #28a745; color: white; border-radius: 3px; cursor: pointer;';
+        explainBtn.onclick = () => {
+            this.processSelection('explain', text);
+            menu.remove();
+        };
+
+        menu.appendChild(translateBtn);
+        menu.appendChild(explainBtn);
+        document.body.appendChild(menu);
+
+        // Remove menu on click outside
+        setTimeout(() => {
+            document.addEventListener('click', () => menu.remove(), { once: true });
+        }, 100);
     }
 
     setupHoverTranslation() {
@@ -247,38 +319,122 @@ class InlineFeedbackExtension {
     async processSelection(action, text) {
         try {
             const uiFeedback = this.components.get('uiFeedback');
-            if (!uiFeedback) return;
-
-            const loader = uiFeedback.showProcessingOverlay(`${action}ing...`);
+            let loader = null;
+            
+            if (uiFeedback && uiFeedback.showProcessingOverlay) {
+                loader = uiFeedback.showProcessingOverlay(`${action}ing...`);
+            } else {
+                // Fallback loading indicator
+                this.showSimpleLoader(`${action}ing...`);
+            }
 
             const response = await this.processWithClaude(action, text);
 
-            // Show result in popup
-            uiFeedback.showPopup({
-                title: this.getTitleForAction(action),
-                subtitle: this.getSubtitleForAction(action),
-                content: response.content,
-                originalText: text,
-                type: action,
-                showOptions: true,
-                onAccept: (options) => {
-                    this.handleActionResult(action, text, response.content, options);
-                }
-            });
+            if (loader) {
+                loader.remove();
+            } else {
+                this.hideSimpleLoader();
+            }
 
-            loader.remove();
+            // Show result
+            if (uiFeedback && uiFeedback.showPopup) {
+                uiFeedback.showPopup({
+                    title: this.getTitleForAction(action),
+                    subtitle: this.getSubtitleForAction(action),
+                    content: response.content,
+                    originalText: text,
+                    type: action,
+                    showOptions: true,
+                    onAccept: (options) => {
+                        this.handleActionResult(action, text, response.content, options);
+                    }
+                });
+            } else {
+                // Fallback: simple alert or console output
+                this.showSimpleResult(action, response.content);
+            }
 
         } catch (error) {
             this.logger.error(`Failed to process ${action}:`, error);
+            this.hideSimpleLoader();
+            
             const uiFeedback = this.components.get('uiFeedback');
-            if (uiFeedback) {
+            if (uiFeedback && uiFeedback.showPopup) {
                 uiFeedback.showPopup({
                     title: 'Error',
                     content: `Failed to ${action}: ${error.message}`,
                     type: 'error'
                 });
+            } else {
+                // Fallback error display
+                alert(`Error: Failed to ${action} - ${error.message}`);
             }
         }
+    }
+
+    showSimpleLoader(message) {
+        const loader = document.createElement('div');
+        loader.id = 'inline-feedback-loader';
+        loader.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 10000;
+            font-family: -apple-system, system-ui, sans-serif;
+            font-size: 14px;
+        `;
+        loader.textContent = message;
+        document.body.appendChild(loader);
+    }
+
+    hideSimpleLoader() {
+        const loader = document.getElementById('inline-feedback-loader');
+        if (loader) loader.remove();
+    }
+
+    showSimpleResult(action, content) {
+        const result = document.createElement('div');
+        result.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 2px solid #007cba;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 10000;
+            font-family: -apple-system, system-ui, sans-serif;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
+
+        const title = document.createElement('h3');
+        title.textContent = this.getTitleForAction(action);
+        title.style.cssText = 'margin: 0 0 10px 0; color: #333;';
+
+        const contentDiv = document.createElement('div');
+        contentDiv.textContent = content;
+        contentDiv.style.cssText = 'margin: 10px 0; line-height: 1.4; color: #555;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.style.cssText = 'margin-top: 15px; padding: 8px 16px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer;';
+        closeBtn.onclick = () => result.remove();
+
+        result.appendChild(title);
+        result.appendChild(contentDiv);
+        result.appendChild(closeBtn);
+        document.body.appendChild(result);
+
+        // Auto-close after 10 seconds
+        setTimeout(() => result.remove(), 10000);
     }
 
     getTitleForAction(action) {
