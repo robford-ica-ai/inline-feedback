@@ -7,14 +7,14 @@ class StorageManager {
     constructor() {
         this.SYNC_KEYS = [
             'apiKey',
-            'selectedModel', 
+            'selectedModel',
             'autoTranslate',
             'ontologyMode',
             'debugMode',
             'language',
             'userPreferences'
         ];
-        
+
         this.LOCAL_KEYS = [
             'requestHistory',
             'cacheData',
@@ -201,7 +201,7 @@ class StorageManager {
     async saveRequestHistory(request) {
         try {
             const { requestHistory = [] } = await this.getLocalData(['requestHistory']);
-            
+
             const newEntry = {
                 id: Date.now().toString(),
                 timestamp: Date.now(),
@@ -213,7 +213,7 @@ class StorageManager {
             };
 
             requestHistory.unshift(newEntry);
-            
+
             // Keep only last 100 requests
             if (requestHistory.length > 100) {
                 requestHistory.splice(100);
@@ -249,7 +249,7 @@ class StorageManager {
     async updateUsageStats(stats) {
         try {
             const { usageStats = {} } = await this.getLocalData(['usageStats']);
-            
+
             const updated = {
                 ...usageStats,
                 lastUpdate: Date.now(),
@@ -299,7 +299,7 @@ class StorageManager {
     async setCache(key, data, ttl = 300000) { // 5 minutes default
         try {
             const { cacheData = {} } = await this.getLocalData(['cacheData']);
-            
+
             cacheData[key] = {
                 data,
                 expires: Date.now() + ttl,
@@ -377,7 +377,7 @@ class StorageManager {
     async clearAllData(includeSettings = false) {
         try {
             await chrome.storage.local.clear();
-            
+
             if (includeSettings) {
                 await chrome.storage.sync.clear();
                 await this.init(); // Reinitialize with defaults
@@ -453,4 +453,4 @@ class StorageManager {
 // Export for use in service worker
 if (typeof globalThis !== 'undefined') {
     globalThis.StorageManager = StorageManager;
-} 
+}

@@ -18,10 +18,10 @@ class PopupManager {
     async loadSettings() {
         try {
             const result = await chrome.storage.sync.get([
-                'apiKey', 
-                'selectedModel', 
-                'autoTranslate', 
-                'ontologyMode', 
+                'apiKey',
+                'selectedModel',
+                'autoTranslate',
+                'ontologyMode',
                 'debugMode'
             ]);
 
@@ -29,11 +29,11 @@ class PopupManager {
             if (result.apiKey) {
                 document.getElementById('apiKey').value = result.apiKey;
             }
-            
+
             if (result.selectedModel) {
                 document.getElementById('modelSelect').value = result.selectedModel;
             }
-            
+
             document.getElementById('autoTranslate').checked = result.autoTranslate || false;
             document.getElementById('ontologyMode').checked = result.ontologyMode !== false; // default true
             document.getElementById('debugMode').checked = result.debugMode || false;
@@ -89,7 +89,7 @@ class PopupManager {
 
     async saveApiKey() {
         const apiKey = document.getElementById('apiKey').value.trim();
-        
+
         if (!apiKey) {
             this.updateStatus('Please enter an API key', 'error');
             return;
@@ -98,7 +98,7 @@ class PopupManager {
         try {
             await chrome.storage.sync.set({ apiKey });
             this.updateStatus('API key saved successfully', 'success');
-            
+
             // Clear the field for security
             setTimeout(() => {
                 document.getElementById('apiKey').value = '';
@@ -121,10 +121,10 @@ class PopupManager {
 
     async testConnection() {
         this.updateStatus('Testing connection...', 'loading');
-        
+
         try {
             const result = await chrome.storage.sync.get(['apiKey']);
-            
+
             if (!result.apiKey) {
                 this.updateStatus('No API key found', 'error');
                 return;
@@ -155,14 +155,14 @@ class PopupManager {
         try {
             await chrome.storage.sync.clear();
             await chrome.storage.local.clear();
-            
+
             // Reset form
             document.getElementById('apiKey').value = '';
             document.getElementById('modelSelect').value = 'claude-3-haiku-20240307';
             document.getElementById('autoTranslate').checked = false;
             document.getElementById('ontologyMode').checked = true;
             document.getElementById('debugMode').checked = false;
-            
+
             this.updateStatus('All data cleared', 'success');
         } catch (error) {
             console.error('Error clearing data:', error);
@@ -173,7 +173,7 @@ class PopupManager {
     async notifyContentScript(setting, value) {
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
+
             if (tab) {
                 chrome.tabs.sendMessage(tab.id, {
                     type: 'SETTING_CHANGED',
@@ -189,10 +189,10 @@ class PopupManager {
     updateStatus(message, type = 'info') {
         const statusText = document.getElementById('statusText');
         const statusIndicator = document.getElementById('statusIndicator');
-        
+
         statusText.textContent = message;
         statusIndicator.className = `status-indicator ${type}`;
-        
+
         // Clear status after 3 seconds unless it's an error
         if (type !== 'error') {
             setTimeout(() => {
@@ -214,4 +214,4 @@ chrome.action?.onClicked?.addListener((tab) => {
         target: { tabId: tab.id },
         files: ['content/content-script.js']
     });
-}); 
+});

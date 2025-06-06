@@ -19,7 +19,7 @@ class ClaudeAPIHandler {
      * @returns {Promise<Object>} API response
      */
     async sendRequest(prompt, options = {}) {
-        const { 
+        const {
             model = this.defaultModel,
             maxTokens = this.maxTokens,
             apiKey,
@@ -56,7 +56,7 @@ class ClaudeAPIHandler {
             // Cache successful responses
             if (useCache && response.content) {
                 this.requestCache.set(cacheKey, response);
-                
+
                 // Limit cache size
                 if (this.requestCache.size > 50) {
                     const firstKey = this.requestCache.keys().next().value;
@@ -121,7 +121,7 @@ class ClaudeAPIHandler {
         }
 
         const data = await response.json();
-        
+
         return {
             content: data.content?.[0]?.text || '',
             model: data.model,
@@ -228,7 +228,7 @@ class ClaudeAPIHandler {
         const now = Date.now();
         const keyHash = btoa(apiKey).slice(0, 16);
         const lastRequest = this.rateLimitTracker.get(keyHash);
-        
+
         // Simple rate limiting: max 1 request per 2 seconds
         return lastRequest && (now - lastRequest) < 2000;
     }
@@ -240,7 +240,7 @@ class ClaudeAPIHandler {
     updateRateLimit(apiKey) {
         const keyHash = btoa(apiKey).slice(0, 16);
         this.rateLimitTracker.set(keyHash, Date.now());
-        
+
         // Clean old entries
         if (this.rateLimitTracker.size > 100) {
             const oldestKey = this.rateLimitTracker.keys().next().value;
@@ -299,4 +299,4 @@ class APIError extends Error {
 if (typeof globalThis !== 'undefined') {
     globalThis.ClaudeAPIHandler = ClaudeAPIHandler;
     globalThis.APIError = APIError;
-} 
+}

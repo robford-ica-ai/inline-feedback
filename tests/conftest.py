@@ -1,8 +1,9 @@
 """Test configuration for inline-feedback extension."""
 
-import pytest
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
+import pytest
 
 
 @pytest.fixture
@@ -19,12 +20,12 @@ def src_directory(project_root: Path) -> Path:
 
 @pytest.fixture
 def test_files_directory() -> Path:
-    """Get the test fixtures directory.""" 
+    """Get the test fixtures directory."""
     return Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
-def sample_manifest() -> Dict[str, Any]:
+def sample_manifest() -> dict[str, Any]:
     """Sample manifest.json structure for testing."""
     return {
         "manifest_version": 3,
@@ -47,7 +48,7 @@ def sample_manifest() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_claude_response() -> Dict[str, Any]:
+def sample_claude_response() -> dict[str, Any]:
     """Sample Claude API response for testing."""
     return {
         "content": [
@@ -76,7 +77,7 @@ def sample_medical_text() -> str:
 
 
 @pytest.fixture
-def sample_medical_materials() -> Dict[str, Dict[str, Any]]:
+def sample_medical_materials() -> dict[str, dict[str, Any]]:
     """Sample medical materials data for testing."""
     return {
         "titanium": {
@@ -91,4 +92,4 @@ def sample_medical_materials() -> Dict[str, Dict[str, Any]]:
             "uses": ["spinal implants", "orthopedic devices"],
             "properties": ["radiolucent", "biocompatible"]
         }
-    } 
+    }

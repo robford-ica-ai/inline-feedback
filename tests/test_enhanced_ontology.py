@@ -1,9 +1,10 @@
 """
 Tests for Enhanced Medical Ontology System
 """
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -11,27 +12,27 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 def test_enhanced_ontology_structure():
     """Test that enhanced ontology has expected structure"""
     # Since we can't execute JS in Python, test file content structure
-    with open('src/ontology/enhanced-medical-ontology.js', 'r') as f:
+    with open('src/ontology/enhanced-medical-ontology.js') as f:
         content = f.read()
-    
+
     # The script should define the class
     assert 'class EnhancedMedicalOntology' in content
 
 def test_research_evidence_structure():
     """Test that research evidence database has expected structure"""
     # Since we can't execute JS in Python, test file content structure
-    with open('src/ontology/research-evidence-db.js', 'r') as f:
+    with open('src/ontology/research-evidence-db.js') as f:
         content = f.read()
-    
+
     # The script should define the class
     assert 'class ResearchEvidenceDatabase' in content
 
 def test_biomaterials_data_structure():
     """Test biomaterials data has research evidence"""
     # Since we can't easily execute JS in Python, we'll do a text-based test
-    with open('src/ontology/enhanced-medical-ontology.js', 'r') as f:
+    with open('src/ontology/enhanced-medical-ontology.js') as f:
         content = f.read()
-    
+
     # Check for key components
     assert 'researchEvidence' in content
     assert 'pmidReferences' in content
@@ -42,9 +43,9 @@ def test_biomaterials_data_structure():
 
 def test_evidence_database_structure():
     """Test evidence database has PMID references"""
-    with open('src/ontology/research-evidence-db.js', 'r') as f:
+    with open('src/ontology/research-evidence-db.js') as f:
         content = f.read()
-    
+
     # Check for key components
     assert 'pmid' in content
     assert 'studyType' in content
@@ -63,17 +64,17 @@ def test_evidence_db_file_exists():
 
 def test_manifest_includes_files():
     """Test that manifest.json includes new ontology files"""
-    with open('src/manifest.json', 'r') as f:
+    with open('src/manifest.json') as f:
         manifest_content = f.read()
-    
+
     assert 'enhanced-medical-ontology.js' in manifest_content
     assert 'research-evidence-db.js' in manifest_content
 
 def test_ontology_highlighter_updated():
     """Test that ontology highlighter supports enhanced ontology"""
-    with open('src/content/ontology-highlighter.js', 'r') as f:
+    with open('src/content/ontology-highlighter.js') as f:
         content = f.read()
-    
+
     # Check for enhanced ontology integration
     assert 'EnhancedMedicalOntology' in content
     assert 'ResearchEvidenceDatabase' in content
@@ -82,9 +83,9 @@ def test_ontology_highlighter_updated():
 
 def test_materials_have_evidence():
     """Test that materials in enhanced ontology have research evidence"""
-    with open('src/ontology/enhanced-medical-ontology.js', 'r') as f:
+    with open('src/ontology/enhanced-medical-ontology.js') as f:
         content = f.read()
-    
+
     # Test that titanium has comprehensive data
     assert 'titanium:' in content
     assert 'successRate:' in content
@@ -94,17 +95,17 @@ def test_materials_have_evidence():
 
 def test_pmid_references_format():
     """Test that PMID references are properly formatted"""
-    with open('src/ontology/research-evidence-db.js', 'r') as f:
+    with open('src/ontology/research-evidence-db.js') as f:
         content = f.read()
-    
+
     # Check for proper PMID format (8-digit numbers)
     import re
-    pmid_pattern = r'"(\d{8})"'
+    pmid_pattern = r"'(\d{8})'"
     pmids = re.findall(pmid_pattern, content)
-    
+
     # Should find multiple PMIDs
     assert len(pmids) >= 4
-    
+
     # All PMIDs should be 8 digits
     for pmid in pmids:
         assert len(pmid) == 8
@@ -112,9 +113,9 @@ def test_pmid_references_format():
 
 def test_clinical_guidance_system():
     """Test that clinical guidance methods are present"""
-    with open('src/ontology/enhanced-medical-ontology.js', 'r') as f:
+    with open('src/ontology/enhanced-medical-ontology.js') as f:
         content = f.read()
-    
+
     # Check for clinical decision support methods
     assert 'getClinicalGuidance' in content
     assert 'getMonitoringRequirements' in content
@@ -123,9 +124,9 @@ def test_clinical_guidance_system():
 
 def test_evidence_quality_assessment():
     """Test that evidence quality assessment is implemented"""
-    with open('src/ontology/research-evidence-db.js', 'r') as f:
+    with open('src/ontology/research-evidence-db.js') as f:
         content = f.read()
-    
+
     # Check for evidence quality methods
     assert 'assessEvidenceQuality' in content
     assert 'qualityScore' in content
@@ -133,4 +134,4 @@ def test_evidence_quality_assessment():
     assert 'recommendation' in content
 
 if __name__ == '__main__':
-    pytest.main([__file__, '-v']) 
+    pytest.main([__file__, '-v'])

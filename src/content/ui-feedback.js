@@ -2,37 +2,37 @@
  * UI Feedback System - Handles all user interface interactions
  */
 class UIFeedback {
-  constructor() {
-    this.logger = new Logger('UIFeedback');
-    this.activePopups = new Set();
-    this.activeTooltips = new Set();
-    this.overlays = new Map();
-    this.animations = new Map();
-  }
+    constructor() {
+        this.logger = new Logger('UIFeedback');
+        this.activePopups = new Set();
+        this.activeTooltips = new Set();
+        this.overlays = new Map();
+        this.animations = new Map();
+    }
 
-  async init() {
-    this.logger.debug('Initializing UI feedback system');
-    
-    // Inject CSS styles
-    this.injectStyles();
-    
-    // Set up global event listeners
-    this.setupGlobalListeners();
-    
-    this.logger.info('UI feedback system initialized');
-  }
+    async init() {
+        this.logger.debug('Initializing UI feedback system');
 
-  injectStyles() {
-    if (document.querySelector('#inline-feedback-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'inline-feedback-styles';
-    style.textContent = this.getCSS();
-    document.head.appendChild(style);
-  }
+        // Inject CSS styles
+        this.injectStyles();
 
-  getCSS() {
-    return `
+        // Set up global event listeners
+        this.setupGlobalListeners();
+
+        this.logger.info('UI feedback system initialized');
+    }
+
+    injectStyles() {
+        if (document.querySelector('#inline-feedback-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'inline-feedback-styles';
+        style.textContent = this.getCSS();
+        document.head.appendChild(style);
+    }
+
+    getCSS() {
+        return `
       /* Inline Feedback UI Styles */
       .if-popup {
         position: fixed;
@@ -272,402 +272,402 @@ class UIFeedback {
         opacity: 1;
       }
     `;
-  }
+    }
 
-  setupGlobalListeners() {
+    setupGlobalListeners() {
     // Close popups on escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        this.closeAllPopups();
-      }
-    });
-    
-    // Close popups on outside click
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.if-popup') && !e.target.closest('.if-selection-menu')) {
-        this.closeAllPopups();
-      }
-    });
-  }
-
-  showPopup(options) {
-    const popup = this.createPopup(options);
-    document.body.appendChild(popup);
-    this.activePopups.add(popup);
-    
-    // Position popup
-    this.positionPopup(popup, options.position);
-    
-    // Show with animation
-    requestAnimationFrame(() => {
-      popup.classList.add('show');
-    });
-    
-    return popup;
-  }
-
-  createPopup(options) {
-    const popup = document.createElement('div');
-    popup.className = 'if-popup';
-    
-    // Header
-    if (options.title || options.subtitle) {
-      const header = document.createElement('div');
-      header.className = 'if-popup-header';
-      
-      if (options.title) {
-        const title = document.createElement('h3');
-        title.className = 'if-popup-title';
-        title.textContent = options.title;
-        header.appendChild(title);
-      }
-      
-      if (options.subtitle) {
-        const subtitle = document.createElement('p');
-        subtitle.className = 'if-popup-subtitle';
-        subtitle.textContent = options.subtitle;
-        header.appendChild(subtitle);
-      }
-      
-      popup.appendChild(header);
-    }
-    
-    // Content
-    const content = document.createElement('div');
-    content.className = 'if-popup-content';
-    
-    if (options.originalText) {
-      const original = document.createElement('div');
-      original.className = 'if-popup-original';
-      original.textContent = options.originalText;
-      content.appendChild(original);
-    }
-    
-    const text = document.createElement('p');
-    text.className = 'if-popup-text';
-    text.textContent = options.content;
-    content.appendChild(text);
-    
-    popup.appendChild(content);
-    
-    // Actions
-    if (options.showOptions || options.actions) {
-      const actions = document.createElement('div');
-      actions.className = 'if-popup-actions';
-      
-      if (options.showOptions) {
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'if-btn if-btn-secondary';
-        copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => {
-          navigator.clipboard.writeText(options.content);
-          this.showTooltip(copyBtn, 'Copied!', 'success');
-        };
-        actions.appendChild(copyBtn);
-        
-        const acceptBtn = document.createElement('button');
-        acceptBtn.className = 'if-btn if-btn-primary';
-        acceptBtn.textContent = 'Accept';
-        acceptBtn.onclick = () => {
-          if (options.onAccept) {
-            options.onAccept({ addToNotes: true });
-          }
-          this.closePopup(popup);
-        };
-        actions.appendChild(acceptBtn);
-      }
-      
-      if (options.actions) {
-        options.actions.forEach(action => {
-          const btn = document.createElement('button');
-          btn.className = `if-btn ${action.primary ? 'if-btn-primary' : 'if-btn-secondary'}`;
-          btn.textContent = action.text;
-          btn.onclick = () => {
-            if (action.handler) action.handler();
-            if (!action.keepOpen) this.closePopup(popup);
-          };
-          actions.appendChild(btn);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeAllPopups();
+            }
         });
-      }
-      
-      popup.appendChild(actions);
-    }
-    
-    return popup;
-  }
 
-  positionPopup(popup, position) {
-    if (position) {
-      popup.style.left = `${position.x}px`;
-      popup.style.top = `${position.y}px`;
-    } else {
-      // Center on screen
-      const rect = popup.getBoundingClientRect();
-      popup.style.left = `${(window.innerWidth - rect.width) / 2}px`;
-      popup.style.top = `${(window.innerHeight - rect.height) / 2}px`;
+        // Close popups on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.if-popup') && !e.target.closest('.if-selection-menu')) {
+                this.closeAllPopups();
+            }
+        });
     }
-    
-    // Ensure popup stays within viewport
-    this.keepInViewport(popup);
-  }
 
-  keepInViewport(element) {
-    const rect = element.getBoundingClientRect();
-    const padding = 20;
-    
-    if (rect.right > window.innerWidth - padding) {
-      element.style.left = `${window.innerWidth - rect.width - padding}px`;
-    }
-    if (rect.left < padding) {
-      element.style.left = `${padding}px`;
-    }
-    if (rect.bottom > window.innerHeight - padding) {
-      element.style.top = `${window.innerHeight - rect.height - padding}px`;
-    }
-    if (rect.top < padding) {
-      element.style.top = `${padding}px`;
-    }
-  }
+    showPopup(options) {
+        const popup = this.createPopup(options);
+        document.body.appendChild(popup);
+        this.activePopups.add(popup);
 
-  showTooltip(target, content, type = 'default', duration = 2000) {
-    const tooltip = document.createElement('div');
-    tooltip.className = 'if-tooltip';
-    tooltip.textContent = content;
-    
-    document.body.appendChild(tooltip);
-    this.activeTooltips.add(tooltip);
-    
-    // Position relative to target
-    const targetRect = target.getBoundingClientRect();
-    tooltip.style.left = `${targetRect.left + targetRect.width / 2 - tooltip.offsetWidth / 2}px`;
-    tooltip.style.top = `${targetRect.top - tooltip.offsetHeight - 10}px`;
-    
-    this.keepInViewport(tooltip);
-    
-    // Show with animation
-    requestAnimationFrame(() => {
-      tooltip.classList.add('show');
-    });
-    
-    // Auto-hide after duration
-    setTimeout(() => {
-      this.closeTooltip(tooltip);
-    }, duration);
-    
-    return tooltip;
-  }
+        // Position popup
+        this.positionPopup(popup, options.position);
 
-  showProcessingOverlay(message = 'Processing...') {
-    const overlay = document.createElement('div');
-    overlay.className = 'if-processing';
-    
-    const spinner = document.createElement('div');
-    spinner.className = 'if-spinner';
-    overlay.appendChild(spinner);
-    
-    const text = document.createElement('span');
-    text.textContent = message;
-    overlay.appendChild(text);
-    
-    document.body.appendChild(overlay);
-    this.overlays.set('processing', overlay);
-    
-    return overlay;
-  }
+        // Show with animation
+        requestAnimationFrame(() => {
+            popup.classList.add('show');
+        });
 
-  showSelectionMenu(selection, text, actions = null) {
-    const menu = document.createElement('div');
-    menu.className = 'if-selection-menu';
-    
-    const defaultActions = [
-      { icon: '🌐', text: 'Translate', action: 'translate' },
-      { icon: '💡', text: 'Explain', action: 'explain' },
-      { icon: '📝', text: 'Summarize', action: 'summarize' }
-    ];
-    
-    const menuActions = actions || defaultActions;
-    
-    menuActions.forEach(actionDef => {
-      const item = document.createElement('button');
-      item.className = 'if-menu-item';
-      
-      const icon = document.createElement('span');
-      icon.className = 'if-menu-icon';
-      icon.textContent = actionDef.icon;
-      item.appendChild(icon);
-      
-      item.appendChild(document.createTextNode(actionDef.text));
-      
-      item.onclick = () => {
-        if (actionDef.handler) {
-          actionDef.handler(text);
+        return popup;
+    }
+
+    createPopup(options) {
+        const popup = document.createElement('div');
+        popup.className = 'if-popup';
+
+        // Header
+        if (options.title || options.subtitle) {
+            const header = document.createElement('div');
+            header.className = 'if-popup-header';
+
+            if (options.title) {
+                const title = document.createElement('h3');
+                title.className = 'if-popup-title';
+                title.textContent = options.title;
+                header.appendChild(title);
+            }
+
+            if (options.subtitle) {
+                const subtitle = document.createElement('p');
+                subtitle.className = 'if-popup-subtitle';
+                subtitle.textContent = options.subtitle;
+                header.appendChild(subtitle);
+            }
+
+            popup.appendChild(header);
+        }
+
+        // Content
+        const content = document.createElement('div');
+        content.className = 'if-popup-content';
+
+        if (options.originalText) {
+            const original = document.createElement('div');
+            original.className = 'if-popup-original';
+            original.textContent = options.originalText;
+            content.appendChild(original);
+        }
+
+        const text = document.createElement('p');
+        text.className = 'if-popup-text';
+        text.textContent = options.content;
+        content.appendChild(text);
+
+        popup.appendChild(content);
+
+        // Actions
+        if (options.showOptions || options.actions) {
+            const actions = document.createElement('div');
+            actions.className = 'if-popup-actions';
+
+            if (options.showOptions) {
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'if-btn if-btn-secondary';
+                copyBtn.textContent = 'Copy';
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(options.content);
+                    this.showTooltip(copyBtn, 'Copied!', 'success');
+                };
+                actions.appendChild(copyBtn);
+
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'if-btn if-btn-primary';
+                acceptBtn.textContent = 'Accept';
+                acceptBtn.onclick = () => {
+                    if (options.onAccept) {
+                        options.onAccept({ addToNotes: true });
+                    }
+                    this.closePopup(popup);
+                };
+                actions.appendChild(acceptBtn);
+            }
+
+            if (options.actions) {
+                options.actions.forEach(action => {
+                    const btn = document.createElement('button');
+                    btn.className = `if-btn ${action.primary ? 'if-btn-primary' : 'if-btn-secondary'}`;
+                    btn.textContent = action.text;
+                    btn.onclick = () => {
+                        if (action.handler) action.handler();
+                        if (!action.keepOpen) this.closePopup(popup);
+                    };
+                    actions.appendChild(btn);
+                });
+            }
+
+            popup.appendChild(actions);
+        }
+
+        return popup;
+    }
+
+    positionPopup(popup, position) {
+        if (position) {
+            popup.style.left = `${position.x}px`;
+            popup.style.top = `${position.y}px`;
         } else {
-          // Dispatch to main extension
-          const event = new CustomEvent('inlineFeedbackAction', {
-            detail: { action: actionDef.action, text: text }
-          });
-          document.dispatchEvent(event);
+            // Center on screen
+            const rect = popup.getBoundingClientRect();
+            popup.style.left = `${(window.innerWidth - rect.width) / 2}px`;
+            popup.style.top = `${(window.innerHeight - rect.height) / 2}px`;
         }
-        this.closeSelectionMenu(menu);
-      };
-      
-      menu.appendChild(item);
-    });
-    
-    document.body.appendChild(menu);
-    
-    // Position near selection
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    
-    menu.style.left = `${rect.left}px`;
-    menu.style.top = `${rect.bottom + 10}px`;
-    
-    this.keepInViewport(menu);
-    
-    // Show with animation
-    requestAnimationFrame(() => {
-      menu.classList.add('show');
-    });
-    
-    // Auto-hide after 10 seconds
-    setTimeout(() => {
-      this.closeSelectionMenu(menu);
-    }, 10000);
-    
-    return menu;
-  }
 
-  closePopup(popup) {
-    popup.classList.remove('show');
-    setTimeout(() => {
-      if (popup.parentNode) {
-        popup.parentNode.removeChild(popup);
-      }
-      this.activePopups.delete(popup);
-    }, 200);
-  }
-
-  closeTooltip(tooltip) {
-    tooltip.classList.remove('show');
-    setTimeout(() => {
-      if (tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-      this.activeTooltips.delete(tooltip);
-    }, 200);
-  }
-
-  closeSelectionMenu(menu) {
-    menu.classList.remove('show');
-    setTimeout(() => {
-      if (menu.parentNode) {
-        menu.parentNode.removeChild(menu);
-      }
-    }, 150);
-  }
-
-  closeAllPopups() {
-    this.activePopups.forEach(popup => this.closePopup(popup));
-    this.activeTooltips.forEach(tooltip => this.closeTooltip(tooltip));
-    
-    // Close overlays
-    this.overlays.forEach((overlay, key) => {
-      if (overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    });
-    this.overlays.clear();
-  }
-
-  highlightText(element, className = 'if-highlight') {
-    if (element.classList.contains(className)) return;
-    
-    element.classList.add(className);
-    
-    // Add click handler for highlights
-    element.onclick = (e) => {
-      e.stopPropagation();
-      this.handleHighlightClick(element, className);
-    };
-  }
-
-  handleHighlightClick(element, className) {
-    const text = element.textContent;
-    
-    if (className === 'if-highlight-medical') {
-      // Show medical material information
-      this.showMaterialInfo(element, text);
-    } else {
-      // Show general action menu
-      const fakeSelection = {
-        getRangeAt: () => ({
-          getBoundingClientRect: () => element.getBoundingClientRect()
-        })
-      };
-      this.showSelectionMenu(fakeSelection, text);
+        // Ensure popup stays within viewport
+        this.keepInViewport(popup);
     }
-  }
 
-  showMaterialInfo(element, materialName) {
-    // This would integrate with the medical ontology
-    const rect = element.getBoundingClientRect();
-    
-    this.showPopup({
-      title: materialName,
-      subtitle: 'Medical Material Information',
-      content: `Click to get detailed information about ${materialName}`,
-      position: { x: rect.left, y: rect.bottom + 10 },
-      actions: [
-        {
-          text: 'Learn More',
-          primary: true,
-          handler: () => {
-            // Trigger detailed lookup
-            const event = new CustomEvent('inlineFeedbackAction', {
-              detail: { action: 'explain', text: materialName }
-            });
-            document.dispatchEvent(event);
-          }
+    keepInViewport(element) {
+        const rect = element.getBoundingClientRect();
+        const padding = 20;
+
+        if (rect.right > window.innerWidth - padding) {
+            element.style.left = `${window.innerWidth - rect.width - padding}px`;
         }
-      ]
-    });
-  }
+        if (rect.left < padding) {
+            element.style.left = `${padding}px`;
+        }
+        if (rect.bottom > window.innerHeight - padding) {
+            element.style.top = `${window.innerHeight - rect.height - padding}px`;
+        }
+        if (rect.top < padding) {
+            element.style.top = `${padding}px`;
+        }
+    }
 
-  // Animation utilities
-  fadeIn(element, duration = 200) {
-    element.style.opacity = '0';
-    element.style.transition = `opacity ${duration}ms ease`;
-    
-    requestAnimationFrame(() => {
-      element.style.opacity = '1';
-    });
-  }
+    showTooltip(target, content, type = 'default', duration = 2000) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'if-tooltip';
+        tooltip.textContent = content;
 
-  slideUp(element, duration = 200) {
-    element.style.transform = 'translateY(20px)';
-    element.style.opacity = '0';
-    element.style.transition = `all ${duration}ms ease`;
-    
-    requestAnimationFrame(() => {
-      element.style.transform = 'translateY(0)';
-      element.style.opacity = '1';
-    });
-  }
+        document.body.appendChild(tooltip);
+        this.activeTooltips.add(tooltip);
 
-  // Utility methods
-  isVisible() {
-    return this.activePopups.size > 0 || this.activeTooltips.size > 0;
-  }
+        // Position relative to target
+        const targetRect = target.getBoundingClientRect();
+        tooltip.style.left = `${targetRect.left + targetRect.width / 2 - tooltip.offsetWidth / 2}px`;
+        tooltip.style.top = `${targetRect.top - tooltip.offsetHeight - 10}px`;
 
-  getActiveElements() {
-    return {
-      popups: Array.from(this.activePopups),
-      tooltips: Array.from(this.activeTooltips),
-      overlays: Array.from(this.overlays.values())
-    };
-  }
+        this.keepInViewport(tooltip);
+
+        // Show with animation
+        requestAnimationFrame(() => {
+            tooltip.classList.add('show');
+        });
+
+        // Auto-hide after duration
+        setTimeout(() => {
+            this.closeTooltip(tooltip);
+        }, duration);
+
+        return tooltip;
+    }
+
+    showProcessingOverlay(message = 'Processing...') {
+        const overlay = document.createElement('div');
+        overlay.className = 'if-processing';
+
+        const spinner = document.createElement('div');
+        spinner.className = 'if-spinner';
+        overlay.appendChild(spinner);
+
+        const text = document.createElement('span');
+        text.textContent = message;
+        overlay.appendChild(text);
+
+        document.body.appendChild(overlay);
+        this.overlays.set('processing', overlay);
+
+        return overlay;
+    }
+
+    showSelectionMenu(selection, text, actions = null) {
+        const menu = document.createElement('div');
+        menu.className = 'if-selection-menu';
+
+        const defaultActions = [
+            { icon: '🌐', text: 'Translate', action: 'translate' },
+            { icon: '💡', text: 'Explain', action: 'explain' },
+            { icon: '📝', text: 'Summarize', action: 'summarize' }
+        ];
+
+        const menuActions = actions || defaultActions;
+
+        menuActions.forEach(actionDef => {
+            const item = document.createElement('button');
+            item.className = 'if-menu-item';
+
+            const icon = document.createElement('span');
+            icon.className = 'if-menu-icon';
+            icon.textContent = actionDef.icon;
+            item.appendChild(icon);
+
+            item.appendChild(document.createTextNode(actionDef.text));
+
+            item.onclick = () => {
+                if (actionDef.handler) {
+                    actionDef.handler(text);
+                } else {
+                    // Dispatch to main extension
+                    const event = new CustomEvent('inlineFeedbackAction', {
+                        detail: { action: actionDef.action, text: text }
+                    });
+                    document.dispatchEvent(event);
+                }
+                this.closeSelectionMenu(menu);
+            };
+
+            menu.appendChild(item);
+        });
+
+        document.body.appendChild(menu);
+
+        // Position near selection
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        menu.style.left = `${rect.left}px`;
+        menu.style.top = `${rect.bottom + 10}px`;
+
+        this.keepInViewport(menu);
+
+        // Show with animation
+        requestAnimationFrame(() => {
+            menu.classList.add('show');
+        });
+
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            this.closeSelectionMenu(menu);
+        }, 10000);
+
+        return menu;
+    }
+
+    closePopup(popup) {
+        popup.classList.remove('show');
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.parentNode.removeChild(popup);
+            }
+            this.activePopups.delete(popup);
+        }, 200);
+    }
+
+    closeTooltip(tooltip) {
+        tooltip.classList.remove('show');
+        setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+            this.activeTooltips.delete(tooltip);
+        }, 200);
+    }
+
+    closeSelectionMenu(menu) {
+        menu.classList.remove('show');
+        setTimeout(() => {
+            if (menu.parentNode) {
+                menu.parentNode.removeChild(menu);
+            }
+        }, 150);
+    }
+
+    closeAllPopups() {
+        this.activePopups.forEach(popup => this.closePopup(popup));
+        this.activeTooltips.forEach(tooltip => this.closeTooltip(tooltip));
+
+        // Close overlays
+        this.overlays.forEach((overlay, key) => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        });
+        this.overlays.clear();
+    }
+
+    highlightText(element, className = 'if-highlight') {
+        if (element.classList.contains(className)) return;
+
+        element.classList.add(className);
+
+        // Add click handler for highlights
+        element.onclick = (e) => {
+            e.stopPropagation();
+            this.handleHighlightClick(element, className);
+        };
+    }
+
+    handleHighlightClick(element, className) {
+        const text = element.textContent;
+
+        if (className === 'if-highlight-medical') {
+            // Show medical material information
+            this.showMaterialInfo(element, text);
+        } else {
+            // Show general action menu
+            const fakeSelection = {
+                getRangeAt: () => ({
+                    getBoundingClientRect: () => element.getBoundingClientRect()
+                })
+            };
+            this.showSelectionMenu(fakeSelection, text);
+        }
+    }
+
+    showMaterialInfo(element, materialName) {
+    // This would integrate with the medical ontology
+        const rect = element.getBoundingClientRect();
+
+        this.showPopup({
+            title: materialName,
+            subtitle: 'Medical Material Information',
+            content: `Click to get detailed information about ${materialName}`,
+            position: { x: rect.left, y: rect.bottom + 10 },
+            actions: [
+                {
+                    text: 'Learn More',
+                    primary: true,
+                    handler: () => {
+                        // Trigger detailed lookup
+                        const event = new CustomEvent('inlineFeedbackAction', {
+                            detail: { action: 'explain', text: materialName }
+                        });
+                        document.dispatchEvent(event);
+                    }
+                }
+            ]
+        });
+    }
+
+    // Animation utilities
+    fadeIn(element, duration = 200) {
+        element.style.opacity = '0';
+        element.style.transition = `opacity ${duration}ms ease`;
+
+        requestAnimationFrame(() => {
+            element.style.opacity = '1';
+        });
+    }
+
+    slideUp(element, duration = 200) {
+        element.style.transform = 'translateY(20px)';
+        element.style.opacity = '0';
+        element.style.transition = `all ${duration}ms ease`;
+
+        requestAnimationFrame(() => {
+            element.style.transform = 'translateY(0)';
+            element.style.opacity = '1';
+        });
+    }
+
+    // Utility methods
+    isVisible() {
+        return this.activePopups.size > 0 || this.activeTooltips.size > 0;
+    }
+
+    getActiveElements() {
+        return {
+            popups: Array.from(this.activePopups),
+            tooltips: Array.from(this.activeTooltips),
+            overlays: Array.from(this.overlays.values())
+        };
+    }
 }
 
 // Make available globally
-window.UIFeedback = UIFeedback; 
+window.UIFeedback = UIFeedback;

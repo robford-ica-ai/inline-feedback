@@ -49,7 +49,7 @@ const BASE_ONTOLOGY = {
         'GU': 'Genitourinary',
         'MSK': 'Musculoskeletal',
         'HEENT': 'Head, Eyes, Ears, Nose, Throat',
-        
+
         // Clinical
         'BP': 'Blood Pressure',
         'HR': 'Heart Rate',
@@ -62,7 +62,7 @@ const BASE_ONTOLOGY = {
         'CT': 'Computed Tomography',
         'US': 'Ultrasound',
         'X-ray': 'Radiograph',
-        
+
         // Laboratory
         'CBC': 'Complete Blood Count',
         'CMP': 'Comprehensive Metabolic Panel',
@@ -78,7 +78,7 @@ const BASE_ONTOLOGY = {
         'PT': 'Prothrombin Time',
         'PTT': 'Partial Thromboplastin Time',
         'INR': 'International Normalized Ratio',
-        
+
         // Medications
         'NSAID': 'Non-Steroidal Anti-Inflammatory Drug',
         'ACE': 'Angiotensin-Converting Enzyme',
@@ -112,7 +112,7 @@ const BASE_ONTOLOGY = {
                 properties: ['tailored properties', 'lightweight', 'multifunctionality']
             }
         },
-        
+
         deviceTypes: {
             implants: {
                 name: 'Implants',
@@ -130,7 +130,7 @@ const BASE_ONTOLOGY = {
                 requirements: ['cost-effectiveness', 'safety', 'ease of use']
             }
         },
-        
+
         biologicalSystems: {
             cardiovascular: {
                 name: 'Cardiovascular System',
@@ -159,17 +159,17 @@ const BASE_ONTOLOGY = {
     validationPatterns: {
         // Chemical formulas
         chemicalFormula: /^[A-Z][a-z]?(\d+)?([A-Z][a-z]?(\d+)?)*$/,
-        
+
         // Medical codes
         icdCode: /^[A-Z]\d{2}(\.\d{1,2})?$/,
         cptCode: /^\d{5}$/,
-        
+
         // Measurement values
         measurement: /^\d+(\.\d+)?\s*(mg|g|kg|ml|L|mmHg|°C|°F|%|units?)$/i,
-        
+
         // Dosage patterns
         dosage: /^\d+(\.\d+)?\s*(mg|g|μg|ng|units?|IU)(\/(kg|day|hr|dose))?$/i,
-        
+
         // Time patterns
         timeInterval: /^\d+(\.\d+)?\s*(sec|min|hr|day|week|month|year)s?$/i
     },
@@ -288,7 +288,7 @@ class BaseOntologyUtils {
     static extractUnits(text) {
         const units = [];
         const allUnits = Object.values(BASE_ONTOLOGY.units).flat();
-        
+
         for (const unit of allUnits) {
             const regex = new RegExp(`\\b\\d+(\\.\\d+)?\\s*${unit}\\b`, 'gi');
             const matches = text.match(regex);
@@ -296,7 +296,7 @@ class BaseOntologyUtils {
                 units.push(...matches);
             }
         }
-        
+
         return units;
     }
 
@@ -343,7 +343,7 @@ class BaseOntologyUtils {
 
         const termLower = term.toLowerCase();
         for (const [key, classification] of Object.entries(classifications)) {
-            if (termLower.includes(key) || 
+            if (termLower.includes(key) ||
                 classification.subtypes?.some(subtype => termLower.includes(subtype))) {
                 return {
                     category,
@@ -371,4 +371,4 @@ if (typeof module !== 'undefined' && module.exports) {
         BASE_ONTOLOGY,
         BaseOntologyUtils
     };
-} 
+}
