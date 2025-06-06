@@ -25,11 +25,11 @@
       "<all_urls>"
     ],
     "js": [
-      "ontology/base-ontology.js",
       "ontology/medical-materials.js",
       "content/pdf-extractor.js",
-      "content/ontology-highlighter.js",
       "content/ui-feedback.js",
+      "content/selection-handler.js",
+      "content/ontology-highlighter.js",
       "content/content-script.js"
     ],
     "css": [

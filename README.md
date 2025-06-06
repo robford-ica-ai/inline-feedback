@@ -74,7 +74,6 @@ py-utils/
 Project requires Python 3.10+ (which is also specified inside [.python-version](.python-version) file) and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed.
 
 ```bash
-
 # Create and activate a virtual environment if needed
 uv venv
 source .venv/bin/activate  # On Unix/macOS
@@ -104,7 +103,7 @@ uvx --with-editable . pre-commit install
 uvx --with-editable . pytest
 
 # Run tests with coverage
-uvx --with pytest-cov --with-editable . pytest --cov=py_launch_blueprint.projects --cov-report=term-missing
+uvx --pytest-cov --with-editable . pytest --cov=py_launch_blueprint.projects --cov-report=term-missing
 
 # Format code
 uvx black py_launch_blueprint/
@@ -443,7 +442,7 @@ npm run dev
 
 ```bash
 # Development
-npm run dev          # Build with file watching
+npm run dev          # Start development build with watch
 npm run test         # Run all tests
 npm run lint         # Lint all code
 npm run format       # Format all code
