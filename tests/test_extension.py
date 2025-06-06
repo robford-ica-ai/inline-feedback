@@ -11,7 +11,7 @@ class TestExtensionIntegration:
 
     def test_manifest_validation(self) -> None:
         """Test that manifest.json is valid."""
-        manifest_path = Path(__file__).parent.parent.parent / "src" / "manifest.json"
+        manifest_path = Path(__file__).parent.parent / "src" / "manifest.json"
         
         assert manifest_path.exists(), "manifest.json should exist"
         
@@ -36,7 +36,7 @@ class TestExtensionIntegration:
 
     def test_extension_files_exist(self) -> None:
         """Test that all required extension files exist."""
-        src_path = Path(__file__).parent.parent.parent / "src"
+        src_path = Path(__file__).parent.parent / "src"
         
         required_files = [
             "manifest.json",
@@ -50,7 +50,7 @@ class TestExtensionIntegration:
 
     def test_content_script_structure(self) -> None:
         """Test content script has proper structure."""
-        content_path = Path(__file__).parent.parent.parent / "src" / "content" / "content-script.js"
+        content_path = Path(__file__).parent.parent / "src" / "content" / "content-script.js"
         
         assert content_path.exists(), "content-script.js should exist"
         
@@ -76,7 +76,7 @@ class TestExtensionIntegration:
 
     def test_medical_ontology_structure(self) -> None:
         """Test medical ontology has proper structure."""
-        ontology_path = Path(__file__).parent.parent.parent / "src" / "ontology" / "medical-materials.js"
+        ontology_path = Path(__file__).parent.parent / "src" / "ontology" / "medical-materials.js"
         
         assert ontology_path.exists(), "medical-materials.js should exist"
         
@@ -95,7 +95,7 @@ class TestExtensionIntegration:
 
     def test_build_script_exists(self) -> None:
         """Test that build script exists and has proper structure."""
-        build_path = Path(__file__).parent.parent.parent / "scripts" / "build.js"
+        build_path = Path(__file__).parent.parent / "scripts" / "build.js"
         
         assert build_path.exists(), "build.js should exist"
         
@@ -107,7 +107,7 @@ class TestExtensionIntegration:
 
     def test_package_json_structure(self) -> None:
         """Test package.json has proper structure."""
-        package_path = Path(__file__).parent.parent.parent / "package.json"
+        package_path = Path(__file__).parent.parent / "package.json"
         
         assert package_path.exists(), "package.json should exist"
         

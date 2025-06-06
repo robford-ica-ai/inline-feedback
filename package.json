@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "node scripts/build.js --watch",
     "build": "node scripts/build.js",
-    "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "uv run pytest tests/unit/",
-    "test:integration": "uv run pytest tests/integration/",
+    "test": "uv run pytest tests/",
     "lint": "npm run lint:js && npm run lint:py",
     "lint:js": "eslint src/ --ext .js",
     "lint:py": "uv run ruff check .",

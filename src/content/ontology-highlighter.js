@@ -1,18 +1,21 @@
 /**
- * Ontology Highlighter - Detects and highlights medical materials in documents
+ * Enhanced Ontology Highlighter - Detects and highlights medical materials with research evidence
  */
 class OntologyHighlighter {
   constructor(ontology) {
-    this.ontology = ontology || window.MedicalMaterialsOntology;
+    this.ontology = ontology || window.EnhancedMedicalOntology;
+    this.evidenceDB = window.ResearchEvidenceDatabase;
     this.logger = new Logger('OntologyHighlighter');
     this.highlightedElements = new Set();
     this.observer = null;
     this.config = {
       highlightClass: 'if-highlight-medical',
+      evidenceClass: 'if-highlight-evidence',
       scanDelay: 500,
       maxScanElements: 1000,
       enableTooltips: true,
-      enableClickActions: true
+      enableClickActions: true,
+      enableEvidenceDisplay: true
     };
     this.scanTimeout = null;
   }
@@ -36,21 +39,29 @@ class OntologyHighlighter {
 
   async loadOntology() {
     try {
-      // Try to load from global scope or import
-      if (window.MedicalMaterialsOntology) {
-        this.ontology = window.MedicalMaterialsOntology;
+      // Try to load enhanced ontology from global scope
+      if (window.EnhancedMedicalOntology) {
+        this.ontology = window.EnhancedMedicalOntology;
+        this.evidenceDB = window.ResearchEvidenceDatabase;
+        this.logger.info('Enhanced medical ontology loaded with research evidence');
         return;
       }
       
-      // Fallback: load from file
-      const response = await fetch(chrome.runtime.getURL('ontology/medical-materials.js'));
-      if (response.ok) {
-        const script = await response.text();
-        eval(script);
-        this.ontology = window.MedicalMaterialsOntology;
+      // Fallback: load enhanced ontology from file
+      const ontologyResponse = await fetch(chrome.runtime.getURL('ontology/enhanced-medical-ontology.js'));
+      const evidenceResponse = await fetch(chrome.runtime.getURL('ontology/research-evidence-db.js'));
+      
+      if (ontologyResponse.ok && evidenceResponse.ok) {
+        const ontologyScript = await ontologyResponse.text();
+        const evidenceScript = await evidenceResponse.text();
+        eval(ontologyScript);
+        eval(evidenceScript);
+        this.ontology = window.EnhancedMedicalOntology;
+        this.evidenceDB = window.ResearchEvidenceDatabase;
+        this.logger.info('Enhanced ontology and evidence database loaded');
       }
     } catch (error) {
-      this.logger.error('Failed to load medical ontology:', error);
+      this.logger.error('Failed to load enhanced medical ontology:', error);
       // Use basic fallback ontology
       this.ontology = this.getBasicOntology();
     }
@@ -214,8 +225,27 @@ class OntologyHighlighter {
     let modifiedText = originalText;
     const matches = [];
     
-    // Find all material matches
-    if (this.ontology && this.ontology.materials) {
+    // Find all material matches using enhanced ontology
+    if (this.ontology && this.ontology.getBiomaterials) {
+      const biomaterials = this.ontology.getBiomaterials();
+      for (const [materialId, material] of Object.entries(biomaterials)) {
+        if (!material.regex) continue;
+        
+        const regex = new RegExp(material.regex.source, 'gi');
+        let match;
+        
+        while ((match = regex.exec(originalText)) !== null) {
+          matches.push({
+            materialId,
+            material,
+            match: match[0],
+            start: match.index,
+            end: match.index + match[0].length
+          });
+        }
+      }
+    } else if (this.ontology && this.ontology.materials) {
+      // Fallback for basic ontology
       for (const [materialId, material] of Object.entries(this.ontology.materials)) {
         if (!material.regex) continue;
         
@@ -348,7 +378,14 @@ class OntologyHighlighter {
   }
 
   generateMaterialDescription(material) {
-    let description = `Category: ${material.category}\n\n`;
+    let description = `Category: ${material.category}\n`;
+    
+    // Add evidence-based information
+    if (material.researchEvidence) {
+      const evidence = material.researchEvidence;
+      description += `Clinical Success Rate: ${evidence.successRate}\n`;
+      description += `Evidence Level: ${evidence.evidenceLevel} (${evidence.studyCount} studies)\n\n`;
+    }
     
     if (material.properties) {
       description += "Key Properties:\n";
@@ -358,30 +395,61 @@ class OntologyHighlighter {
       description += "\n";
     }
     
-    if (material.medicalUses) {
-      description += "Medical Uses:\n";
-      material.medicalUses.forEach(use => {
+    if (material.medicalApplications) {
+      description += "Medical Applications:\n";
+      material.medicalApplications.forEach(use => {
         description += `• ${use}\n`;
       });
       description += "\n";
     }
     
-    if (material.fdaClass) {
-      description += `FDA Classification: ${material.fdaClass}\n`;
+    if (material.fdaClassification) {
+      description += `FDA Classification: ${material.fdaClassification}\n`;
     }
     
-    description += "\nClick 'Learn More' for detailed AI analysis.";
+    // Add biocompatibility findings
+    if (material.biologicalEffects) {
+      description += "\nBiocompatibility:\n";
+      description += `• ${material.biologicalEffects.biocompatibility}\n`;
+      if (material.biologicalEffects.osseointegration) {
+        description += `• Osseointegration: ${material.biologicalEffects.osseointegration}\n`;
+      }
+    }
+    
+    // Add contraindications if available
+    if (material.researchEvidence?.contraindications) {
+      description += `\nContraindications: ${material.researchEvidence.contraindications.join(', ')}\n`;
+    }
+    
+    description += "\nClick 'Learn More' for research citations and detailed analysis.";
     
     return description;
   }
 
   requestDetailedInfo(materialId, materialName) {
-    // Trigger detailed lookup via the main extension
+    // Get research evidence if available
+    const material = this.getMaterialInfo(materialId);
+    const researchContext = {};
+    
+    if (material?.researchEvidence?.pmidReferences) {
+      researchContext.pmids = material.researchEvidence.pmidReferences;
+      researchContext.studyCount = material.researchEvidence.studyCount;
+      researchContext.evidenceLevel = material.researchEvidence.evidenceLevel;
+    }
+    
+    // Trigger detailed lookup via the main extension with research context
     const event = new CustomEvent('inlineFeedbackAction', {
       detail: { 
         action: 'medical-explain', 
         text: materialName,
-        context: { materialId, source: 'ontology' }
+        context: { 
+          materialId, 
+          source: 'enhanced-ontology',
+          research: researchContext,
+          properties: material?.properties,
+          applications: material?.medicalApplications,
+          contraindications: material?.researchEvidence?.contraindications
+        }
       }
     });
     document.dispatchEvent(event);
@@ -425,8 +493,14 @@ class OntologyHighlighter {
   }
 
   getMaterialInfo(materialId) {
-    if (!this.ontology?.materials) return null;
-    return this.ontology.materials[materialId];
+    if (this.ontology?.getBiomaterials) {
+      const biomaterials = this.ontology.getBiomaterials();
+      return biomaterials[materialId];
+    } else if (this.ontology?.materials) {
+      // Fallback for basic ontology
+      return this.ontology.materials[materialId];
+    }
+    return null;
   }
 
   // Public API methods
@@ -462,10 +536,20 @@ class OntologyHighlighter {
       materialCounts[materialId] = (materialCounts[materialId] || 0) + 1;
     });
     
+    // Get available materials from enhanced ontology
+    let availableMaterials = [];
+    if (this.ontology?.getBiomaterials) {
+      availableMaterials = Object.keys(this.ontology.getBiomaterials());
+    } else if (this.ontology?.materials) {
+      availableMaterials = Object.keys(this.ontology.materials);
+    }
+    
     return {
       totalHighlights: this.highlightedElements.size,
       materialCounts,
-      availableMaterials: this.ontology?.materials ? Object.keys(this.ontology.materials) : []
+      availableMaterials,
+      evidenceLevel: this.ontology?.evidenceLevel || 'basic',
+      researchBacked: !!this.evidenceDB
     };
   }
 

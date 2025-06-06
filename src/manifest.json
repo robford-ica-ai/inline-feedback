@@ -25,7 +25,13 @@
       "<all_urls>"
     ],
     "js": [
+      "ontology/enhanced-medical-ontology.js",
+      "ontology/research-evidence-db.js",
       "ontology/medical-materials.js",
+      "debbie-integration/debbie-api-client.js",
+      "debbie-integration/owl2dict-converter.js",
+      "debbie-integration/gold-standard-pmid-loader.js",
+      "debbie-integration/project-debbie-coordinator.js",
       "content/pdf-extractor.js",
       "content/ui-feedback.js",
       "content/selection-handler.js",
@@ -68,6 +74,7 @@
   "web_accessible_resources": [{
     "resources": [
       "ontology/*",
+      "debbie-integration/*",
       "styles/*"
     ],
     "matches": ["<all_urls>"]
