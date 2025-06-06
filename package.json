@@ -19,13 +19,12 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "archiver": "^6.0.1",
+    "chokidar": "^3.6.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
-    "web-ext": "^7.11.0",
-    "archiver": "^6.0.1",
-    "chokidar": "^3.6.0"
+    "web-ext": "^8.7.1"
   },
-  "dependencies": {},
   "engines": {
     "node": ">=18.0.0"
   },
@@ -40,4 +39,4 @@
   ],
   "author": "Your Name",
   "license": "MIT"
-} 
+}
