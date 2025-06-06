@@ -6,13 +6,20 @@
 class PopupManager {
     constructor() {
         this.storageManager = null;
+        this.stats = { translations: 0, explanations: 0, terms: 0 };
         this.init();
     }
 
     async init() {
-        await this.loadSettings();
-        this.setupEventListeners();
-        this.updateStatus();
+        try {
+            await this.loadSettings();
+            this.setupEventListeners();
+            this.updateStatus('Ready', 'success');
+            await this.loadStats();
+        } catch (error) {
+            console.error('Error initializing popup:', error);
+            this.updateStatus('Error loading settings', 'error');
+        }
     }
 
     async loadSettings() {
@@ -21,88 +28,184 @@ class PopupManager {
                 'apiKey',
                 'selectedModel',
                 'autoTranslate',
-                'ontologyMode',
-                'debugMode'
+                'autoHighlight',
+                'showTooltips'
             ]);
 
-            // Populate form fields
-            if (result.apiKey) {
-                document.getElementById('apiKey').value = result.apiKey;
+            // Populate form fields with fallback defaults
+            const apiKeyField = document.getElementById('apiKey');
+            if (apiKeyField && result.apiKey) {
+                apiKeyField.value = result.apiKey;
             }
 
-            if (result.selectedModel) {
-                document.getElementById('modelSelect').value = result.selectedModel;
+            const modelSelect = document.getElementById('modelSelect');
+            if (modelSelect) {
+                modelSelect.value = result.selectedModel || 'claude-3-sonnet-20240229';
             }
 
-            document.getElementById('autoTranslate').checked = result.autoTranslate || false;
-            document.getElementById('ontologyMode').checked = result.ontologyMode !== false; // default true
-            document.getElementById('debugMode').checked = result.debugMode || false;
+            const autoTranslate = document.getElementById('autoTranslate');
+            if (autoTranslate) {
+                autoTranslate.checked = result.autoTranslate || false;
+            }
+
+            const autoHighlight = document.getElementById('autoHighlight');
+            if (autoHighlight) {
+                autoHighlight.checked = result.autoHighlight !== false; // default true
+            }
+
+            const showTooltips = document.getElementById('showTooltips');
+            if (showTooltips) {
+                showTooltips.checked = result.showTooltips !== false; // default true
+            }
 
         } catch (error) {
             console.error('Error loading settings:', error);
-            this.updateStatus('Error loading settings', 'error');
+            throw error;
         }
     }
 
     setupEventListeners() {
-        // Save API key
-        document.getElementById('saveApiKey').addEventListener('click', () => {
-            this.saveApiKey();
-        });
+        // Quick action buttons
+        const translateBtn = document.getElementById('translateBtn');
+        if (translateBtn) {
+            translateBtn.addEventListener('click', () => this.triggerAction('translate'));
+        }
+
+        const explainBtn = document.getElementById('explainBtn');
+        if (explainBtn) {
+            explainBtn.addEventListener('click', () => this.triggerAction('explain'));
+        }
+
+        const highlightBtn = document.getElementById('highlightBtn');
+        if (highlightBtn) {
+            highlightBtn.addEventListener('click', () => this.toggleHighlighting());
+        }
+
+        // Test API button
+        const testApiBtn = document.getElementById('testApiBtn');
+        if (testApiBtn) {
+            testApiBtn.addEventListener('click', () => this.testConnection());
+        }
 
         // Model selection
-        document.getElementById('modelSelect').addEventListener('change', (e) => {
-            this.saveSetting('selectedModel', e.target.value);
-        });
+        const modelSelect = document.getElementById('modelSelect');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', (e) => {
+                this.saveSetting('selectedModel', e.target.value);
+            });
+        }
 
         // Checkbox settings
-        document.getElementById('autoTranslate').addEventListener('change', (e) => {
-            this.saveSetting('autoTranslate', e.target.checked);
-        });
+        const autoTranslate = document.getElementById('autoTranslate');
+        if (autoTranslate) {
+            autoTranslate.addEventListener('change', (e) => {
+                this.saveSetting('autoTranslate', e.target.checked);
+            });
+        }
 
-        document.getElementById('ontologyMode').addEventListener('change', (e) => {
-            this.saveSetting('ontologyMode', e.target.checked);
-            this.notifyContentScript('ontologyMode', e.target.checked);
-        });
+        const autoHighlight = document.getElementById('autoHighlight');
+        if (autoHighlight) {
+            autoHighlight.addEventListener('change', (e) => {
+                this.saveSetting('autoHighlight', e.target.checked);
+                this.notifyContentScript('autoHighlight', e.target.checked);
+            });
+        }
 
-        document.getElementById('debugMode').addEventListener('change', (e) => {
-            this.saveSetting('debugMode', e.target.checked);
-        });
+        const showTooltips = document.getElementById('showTooltips');
+        if (showTooltips) {
+            showTooltips.addEventListener('change', (e) => {
+                this.saveSetting('showTooltips', e.target.checked);
+            });
+        }
 
-        // Test connection
-        document.getElementById('testConnection').addEventListener('click', () => {
-            this.testConnection();
-        });
+        // API key save on blur/enter
+        const apiKey = document.getElementById('apiKey');
+        if (apiKey) {
+            apiKey.addEventListener('blur', () => this.saveApiKey());
+            apiKey.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.saveApiKey();
+                }
+            });
+        }
 
-        // Clear data
-        document.getElementById('clearData').addEventListener('click', () => {
-            this.clearData();
-        });
+        // Footer links
+        const helpLink = document.getElementById('helpLink');
+        if (helpLink) {
+            helpLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showHelp();
+            });
+        }
 
-        // Enter key on API key field
-        document.getElementById('apiKey').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.saveApiKey();
+        const historyLink = document.getElementById('historyLink');
+        if (historyLink) {
+            historyLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showHistory();
+            });
+        }
+
+        const aboutLink = document.getElementById('aboutLink');
+        if (aboutLink) {
+            aboutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showAbout();
+            });
+        }
+    }
+
+    async triggerAction(action) {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab) {
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'keyboard-command',
+                    command: action
+                });
+                this.updateStatus(`Triggered ${action}`, 'success');
+                window.close(); // Close popup after action
             }
-        });
+        } catch (error) {
+            console.error(`Error triggering ${action}:`, error);
+            this.updateStatus(`Failed to trigger ${action}`, 'error');
+        }
+    }
+
+    async toggleHighlighting() {
+        try {
+            const result = await chrome.storage.sync.get(['autoHighlight']);
+            const newValue = !result.autoHighlight;
+            
+            await this.saveSetting('autoHighlight', newValue);
+            document.getElementById('autoHighlight').checked = newValue;
+            
+            this.notifyContentScript('autoHighlight', newValue);
+            this.updateStatus(`Highlighting ${newValue ? 'enabled' : 'disabled'}`, 'success');
+        } catch (error) {
+            console.error('Error toggling highlighting:', error);
+            this.updateStatus('Error toggling highlighting', 'error');
+        }
     }
 
     async saveApiKey() {
-        const apiKey = document.getElementById('apiKey').value.trim();
+        const apiKeyField = document.getElementById('apiKey');
+        if (!apiKeyField) return;
+
+        const apiKey = apiKeyField.value.trim();
 
         if (!apiKey) {
-            this.updateStatus('Please enter an API key', 'error');
+            return; // Don't show error for empty field
+        }
+
+        if (!apiKey.startsWith('sk-ant-')) {
+            this.updateStatus('API key should start with sk-ant-', 'error');
             return;
         }
 
         try {
             await chrome.storage.sync.set({ apiKey });
-            this.updateStatus('API key saved successfully', 'success');
-
-            // Clear the field for security
-            setTimeout(() => {
-                document.getElementById('apiKey').value = '';
-            }, 1500);
+            this.updateStatus('API key saved', 'success');
         } catch (error) {
             console.error('Error saving API key:', error);
             this.updateStatus('Error saving API key', 'error');
@@ -112,7 +215,7 @@ class PopupManager {
     async saveSetting(key, value) {
         try {
             await chrome.storage.sync.set({ [key]: value });
-            this.updateStatus(`${key} updated`, 'success');
+            // Don't show status for every setting change to avoid spam
         } catch (error) {
             console.error(`Error saving ${key}:`, error);
             this.updateStatus(`Error saving ${key}`, 'error');
@@ -120,7 +223,7 @@ class PopupManager {
     }
 
     async testConnection() {
-        this.updateStatus('Testing connection...', 'loading');
+        this.updateStatus('Testing API connection...', 'loading');
 
         try {
             const result = await chrome.storage.sync.get(['apiKey']);
@@ -132,41 +235,18 @@ class PopupManager {
 
             // Send test message to background script
             const response = await chrome.runtime.sendMessage({
-                type: 'TEST_CONNECTION',
+                action: 'test-api',
                 apiKey: result.apiKey
             });
 
-            if (response.success) {
-                this.updateStatus('Connection successful!', 'success');
+            if (response && response.success) {
+                this.updateStatus('API connection successful!', 'success');
             } else {
-                this.updateStatus(`Connection failed: ${response.error}`, 'error');
+                this.updateStatus(`API test failed: ${response?.error || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('Error testing connection:', error);
             this.updateStatus('Connection test failed', 'error');
-        }
-    }
-
-    async clearData() {
-        if (!confirm('Are you sure you want to clear all extension data?')) {
-            return;
-        }
-
-        try {
-            await chrome.storage.sync.clear();
-            await chrome.storage.local.clear();
-
-            // Reset form
-            document.getElementById('apiKey').value = '';
-            document.getElementById('modelSelect').value = 'claude-3-haiku-20240307';
-            document.getElementById('autoTranslate').checked = false;
-            document.getElementById('ontologyMode').checked = true;
-            document.getElementById('debugMode').checked = false;
-
-            this.updateStatus('All data cleared', 'success');
-        } catch (error) {
-            console.error('Error clearing data:', error);
-            this.updateStatus('Error clearing data', 'error');
         }
     }
 
@@ -175,37 +255,86 @@ class PopupManager {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (tab) {
-                chrome.tabs.sendMessage(tab.id, {
-                    type: 'SETTING_CHANGED',
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'setting-changed',
                     setting: setting,
                     value: value
                 });
             }
         } catch (error) {
-            console.error('Error notifying content script:', error);
+            // Content script might not be loaded, that's OK
+            console.debug('Could not notify content script:', error);
+        }
+    }
+
+    async loadStats() {
+        try {
+            const result = await chrome.storage.local.get(['usage-stats']);
+            const stats = result['usage-stats'] || { translations: 0, explanations: 0, terms: 0 };
+
+            const translationCount = document.getElementById('translationCount');
+            const explanationCount = document.getElementById('explanationCount');
+            const termCount = document.getElementById('termCount');
+
+            if (translationCount) translationCount.textContent = stats.translations || 0;
+            if (explanationCount) explanationCount.textContent = stats.explanations || 0;
+            if (termCount) termCount.textContent = stats.terms || 0;
+
+        } catch (error) {
+            console.error('Error loading stats:', error);
         }
     }
 
     updateStatus(message, type = 'info') {
         const statusText = document.getElementById('statusText');
-        const statusIndicator = document.getElementById('statusIndicator');
+        const statusDot = document.getElementById('statusDot');
 
-        statusText.textContent = message;
-        statusIndicator.className = `status-indicator ${type}`;
+        if (statusText) {
+            statusText.textContent = message;
+        }
+
+        if (statusDot) {
+            statusDot.className = `status-dot ${type}`;
+        }
 
         // Clear status after 3 seconds unless it's an error
         if (type !== 'error') {
             setTimeout(() => {
-                statusText.textContent = 'Ready';
-                statusIndicator.className = 'status-indicator';
+                if (statusText) statusText.textContent = 'Ready';
+                if (statusDot) statusDot.className = 'status-dot success';
             }, 3000);
         }
+    }
+
+    showHelp() {
+        chrome.tabs.create({
+            url: 'https://github.com/your-repo/inline-feedback#usage'
+        });
+    }
+
+    showHistory() {
+        // Could open a dedicated history page or show inline
+        this.updateStatus('History feature coming soon!', 'info');
+    }
+
+    showAbout() {
+        const manifest = chrome.runtime.getManifest();
+        alert(`Inline Feedback v${manifest.version}\n\nAI-powered text processing for web pages with medical term highlighting.\n\nDeveloped by Robert Ford`);
     }
 }
 
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new PopupManager();
+    try {
+        new PopupManager();
+    } catch (error) {
+        console.error('Failed to initialize popup:', error);
+        // Fallback error display
+        const statusText = document.getElementById('statusText');
+        if (statusText) {
+            statusText.textContent = 'Initialization failed';
+        }
+    }
 });
 
 // Handle extension icon click
