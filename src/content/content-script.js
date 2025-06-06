@@ -280,12 +280,23 @@ class InlineFeedbackExtension {
 
     async processWithClaude(action, text, context = {}) {
         try {
-            const response = await chrome.runtime.sendMessage({
+            // Add timeout to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timeout - no response from background script')), 10000);
+            });
+
+            const messagePromise = chrome.runtime.sendMessage({
                 action: action,
                 text: text,
                 context: context,
                 url: window.location.href
             });
+
+            const response = await Promise.race([messagePromise, timeoutPromise]);
+
+            if (!response) {
+                throw new Error('No response from background script - check if API key is configured');
+            }
 
             if (response.error) {
                 throw new Error(response.error);
@@ -322,10 +333,10 @@ class InlineFeedbackExtension {
             let loader = null;
             
             if (uiFeedback && uiFeedback.showProcessingOverlay) {
-                loader = uiFeedback.showProcessingOverlay(`${action}ing...`);
+                loader = uiFeedback.showProcessingOverlay(this.getLoadingMessage(action));
             } else {
                 // Fallback loading indicator
-                this.showSimpleLoader(`${action}ing...`);
+                this.showSimpleLoader(this.getLoadingMessage(action));
             }
 
             const response = await this.processWithClaude(action, text);
@@ -435,6 +446,16 @@ class InlineFeedbackExtension {
 
         // Auto-close after 10 seconds
         setTimeout(() => result.remove(), 10000);
+    }
+
+    getLoadingMessage(action) {
+        const messages = {
+            translate: 'Translating...',
+            explain: 'Explaining...',
+            summarize: 'Summarizing...',
+            correct: 'Correcting...'
+        };
+        return messages[action] || 'Processing...';
     }
 
     getTitleForAction(action) {

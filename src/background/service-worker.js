@@ -41,13 +41,99 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'logError':
             console.error('Error from content script:', request.error);
             break;
+
+        case 'translate':
+        case 'explain':
+        case 'summarize':
+        case 'correct':
+            handleAIRequest(request, sendResponse);
+            return true; // Keep message channel open for async response
+            
+        case 'test-api':
+            handleAPITest(request, sendResponse);
+            return true; // Keep message channel open for async response
             
         default:
             console.log('Unknown action:', request.action);
+            sendResponse({ error: 'Unknown action: ' + request.action });
     }
     
     return true; // Keep message channel open for async responses
 });
+
+// Handle AI requests (translate, explain, etc.)
+async function handleAIRequest(request, sendResponse) {
+    try {
+        console.log(`Processing ${request.action} request:`, request.text.substring(0, 50) + '...');
+        
+        // Get API key from storage
+        const result = await chrome.storage.sync.get(['apiKey']);
+        
+        if (!result.apiKey) {
+            sendResponse({ 
+                error: 'No API key configured. Please set your Claude API key in the extension popup.' 
+            });
+            return;
+        }
+
+        // For now, return a mock response since we don't have the actual API implementation
+        // In a real implementation, you'd call the Claude API here
+        const mockResponse = getMockResponse(request.action, request.text);
+        
+        sendResponse({
+            content: mockResponse,
+            action: request.action,
+            success: true
+        });
+        
+    } catch (error) {
+        console.error('Error handling AI request:', error);
+        sendResponse({ 
+            error: `Failed to process ${request.action}: ${error.message}` 
+        });
+    }
+}
+
+// Handle API key testing
+async function handleAPITest(request, sendResponse) {
+    try {
+        console.log('Testing API connection...');
+        
+        if (!request.apiKey || !request.apiKey.startsWith('sk-ant-')) {
+            sendResponse({ 
+                success: false, 
+                error: 'Invalid API key format' 
+            });
+            return;
+        }
+
+        // For now, just validate the format
+        // In a real implementation, you'd make a test call to Claude API
+        sendResponse({ 
+            success: true, 
+            message: 'API key format is valid' 
+        });
+        
+    } catch (error) {
+        console.error('Error testing API:', error);
+        sendResponse({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+}
+
+// Mock responses for testing without actual API
+function getMockResponse(action, text) {
+    const responses = {
+        translate: `[Mock Translation] This is a simulated translation of: "${text.substring(0, 50)}..."`,
+        explain: `[Mock Explanation] This is a simulated explanation of: "${text.substring(0, 50)}..." - This concept refers to...`,
+        summarize: `[Mock Summary] Key points from "${text.substring(0, 50)}...": • Main idea 1 • Main idea 2 • Conclusion`,
+        correct: `[Mock Correction] Suggested improvement for: "${text.substring(0, 50)}..."`
+    };
+    
+    return responses[action] || `[Mock Response] Processed "${text.substring(0, 50)}..." with action: ${action}`;
+}
 
 // Handle context menu clicks (if we add context menus later)
 chrome.contextMenus?.onClicked?.addListener((info, tab) => {
