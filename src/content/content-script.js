@@ -1,600 +1,365 @@
 /**
- * Inline Feedback - Main Content Script
- * Orchestrates all extension functionality in PDF and web pages
+ * Inline Feedback Extension - Main Content Script
+ * Initializes and coordinates all extension components
  */
-
 class InlineFeedbackExtension {
     constructor() {
-        this.initialized = false;
+        this.logger = new Logger('InlineFeedbackExtension');
         this.components = new Map();
-        this.config = null;
-        this.logger = new Logger('InlineFeedback');
+        this.config = {
+            enabled: true,
+            highlightMedicalTerms: true,
+            enableSelectionMenu: true,
+            debugMode: false
+        };
     }
 
     async init() {
-        if (this.initialized) return;
-
+        this.logger.info('Initializing Inline Feedback Extension');
+        
         try {
-            // Check if we should activate on this page
-            if (!this.shouldActivate()) {
-                this.logger.debug('Page not suitable for activation');
-                return;
-            }
-
-            this.logger.info('Initializing Inline Feedback Extension...');
-
             // Load configuration
-            this.config = await this.loadConfig();
-
-            // Initialize core components
+            await this.loadConfig();
+            
+            // Initialize components
             await this.initializeComponents();
-
-            // Set up event listeners
-            this.setupEventListeners();
-
-            // Start ontology highlighting
-            if (this.config.ontologyEnabled) {
-                this.components.get('ontologyHighlighter').highlightDocument();
-            }
-
-            // Show activation indicator
-            this.showActivationMessage();
-
-            this.initialized = true;
+            
+            // Set up message listeners
+            this.setupMessageListeners();
+            
+            // Set global reference
+            window.inlineFeedbackExtension = this;
+            
             this.logger.info('Extension initialized successfully');
-
         } catch (error) {
             this.logger.error('Failed to initialize extension:', error);
-            throw new ExtensionError('Initialization failed', error);
         }
-    }
-
-    shouldActivate() {
-    // Activate on PDF pages
-        if (this.isPDFPage()) return true;
-
-        // Activate on pages with substantial text content
-        const textLength = document.body?.textContent?.trim().length || 0;
-        if (textLength > 500) return true;
-
-        // Skip on certain pages
-        const skipDomains = ['chrome://', 'chrome-extension://', 'moz-extension://'];
-        if (skipDomains.some(domain => window.location.href.startsWith(domain))) {
-            return false;
-        }
-
-        return false;
-    }
-
-    isPDFPage() {
-        return (
-            document.contentType === 'application/pdf' ||
-      window.location.href.endsWith('.pdf') ||
-      document.querySelector('embed[type="application/pdf"]') !== null ||
-      document.querySelector('#viewerContainer') !== null // PDF.js
-        );
     }
 
     async loadConfig() {
+        this.logger.debug('Loading configuration');
+        
         try {
-            const stored = await chrome.storage.local.get(['config']);
-            const config = stored.config || {};
-
-            return {
-                claudeApiKey: config.claudeApiKey || null,
-                model: config.model || 'claude-3-sonnet-20240229',
-                autoTranslate: config.autoTranslate || false,
-                ontologyEnabled: config.ontologyEnabled !== false, // default true
-                debugMode: config.debugMode || false
-            };
+            // Try to load from storage
+            if (chrome.storage && chrome.storage.local) {
+                return new Promise((resolve) => {
+                    chrome.storage.local.get(['inlineFeedbackConfig'], (result) => {
+                        if (result.inlineFeedbackConfig) {
+                            this.config = { ...this.config, ...result.inlineFeedbackConfig };
+                            this.logger.debug('Loaded configuration from storage');
+                        } else {
+                            this.logger.debug('No saved configuration found, using defaults');
+                        }
+                        
+                        // Apply debug mode to logger
+                        this.logger.setDebugMode(this.config.debugMode);
+                        
+                        resolve();
+                    });
+                });
+            }
         } catch (error) {
-            this.logger.error('Failed to load config:', error);
-            return {};
+            this.logger.warn('Failed to load configuration from storage:', error);
+        }
+        
+        this.logger.debug('Using default configuration');
+    }
+
+    async saveConfig() {
+        this.logger.debug('Saving configuration');
+        
+        try {
+            if (chrome.storage && chrome.storage.local) {
+                return new Promise((resolve) => {
+                    chrome.storage.local.set({ inlineFeedbackConfig: this.config }, () => {
+                        this.logger.debug('Configuration saved to storage');
+                        resolve();
+                    });
+                });
+            }
+        } catch (error) {
+            this.logger.warn('Failed to save configuration to storage:', error);
         }
     }
 
     async initializeComponents() {
-        // Define available components
-        const componentFactories = {
-            'uiFeedback': () => typeof UIFeedback !== 'undefined' ? new UIFeedback() : null,
-            'ontologyHighlighter': () => typeof OntologyHighlighter !== 'undefined' ? 
-                new OntologyHighlighter(window.MedicalMaterialsOntology || window.EnhancedMedicalOntology) : null,
-            'selectionHandler': () => typeof SelectionHandler !== 'undefined' ? new SelectionHandler(this) : null
-        };
-
-        // Only initialize PDF extractor on PDF pages
-        if (this.isPDFPage() && typeof PDFExtractor !== 'undefined') {
-            componentFactories['pdfExtractor'] = () => new PDFExtractor();
-        }
-
-        // Initialize components with robust error handling
-        for (const [name, factory] of Object.entries(componentFactories)) {
-            try {
-                const component = factory();
-                if (!component) {
-                    this.logger.warn(`Component ${name} not available, skipping...`);
-                    continue;
-                }
-
-                if (component.init) {
-                    await component.init();
-                }
-                this.components.set(name, component);
-                this.logger.debug(`Component ${name} initialized successfully`);
-            } catch (error) {
-                this.logger.error(`Failed to initialize ${name}:`, error);
-                // Don't throw - continue with other components
-                continue;
-            }
-        }
-
-        // Ensure we have at least some basic functionality
-        if (this.components.size === 0) {
-            this.logger.warn('No components initialized, extension will have limited functionality');
-        }
-    }
-
-    setupEventListeners() {
-    // Listen for messages from background script
-        chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', this.handleKeyboard.bind(this));
-
-        // Selection handling
-        document.addEventListener('mouseup', this.handleSelection.bind(this));
-
-        // Auto-translation on hover (if enabled)
-        if (this.config.autoTranslate) {
-            this.setupHoverTranslation();
-        }
-    }
-
-    handleMessage(request, sender, sendResponse) {
-        switch (request.action) {
-        case 'process-selection':
-            this.processSelection(request.type, request.text);
-            break;
-        case 'keyboard-command':
-            this.handleKeyboardCommand(request.command);
-            break;
-        default:
-            this.logger.warn('Unknown message action:', request.action);
-        }
-    }
-
-    handleKeyboard(e) {
-    // Cmd/Ctrl + Shift + T = Quick translate
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'T') {
-            e.preventDefault();
-            this.quickTranslateSelection();
-        }
-
-        // Cmd/Ctrl + Shift + E = Explain
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'E') {
-            e.preventDefault();
-            this.explainSelection();
-        }
-    }
-
-    handleSelection(e) {
-        const selection = window.getSelection();
-        const text = selection.toString().trim();
-
-        if (text.length > 0 && text.length < 500) {
-            const selectionHandler = this.components.get('selectionHandler');
-            if (selectionHandler && selectionHandler.showSelectionMenu) {
-                try {
-                    selectionHandler.showSelectionMenu(selection, text);
-                } catch (error) {
-                    this.logger.debug('Selection handler failed:', error);
-                    // Fallback: basic context menu
-                    this.showBasicSelectionMenu(selection, text);
-                }
-            } else {
-                // Fallback: basic context menu
-                this.showBasicSelectionMenu(selection, text);
-            }
-        }
-    }
-
-    showBasicSelectionMenu(selection, text) {
-        // Simple fallback context menu
-        const menu = document.createElement('div');
-        menu.style.cssText = `
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 10000;
-            font-family: -apple-system, system-ui, sans-serif;
-            font-size: 14px;
-        `;
+        this.logger.debug('Initializing components');
         
-        const rect = selection.getRangeAt(0).getBoundingClientRect();
-        menu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
-        menu.style.left = (rect.left + window.scrollX) + 'px';
-
-        const translateBtn = document.createElement('button');
-        translateBtn.textContent = 'Translate';
-        translateBtn.style.cssText = 'margin: 2px; padding: 4px 8px; border: none; background: #007cba; color: white; border-radius: 3px; cursor: pointer;';
-        translateBtn.onclick = () => {
-            this.processSelection('translate', text);
-            menu.remove();
-        };
-
-        const explainBtn = document.createElement('button');
-        explainBtn.textContent = 'Explain';
-        explainBtn.style.cssText = 'margin: 2px; padding: 4px 8px; border: none; background: #28a745; color: white; border-radius: 3px; cursor: pointer;';
-        explainBtn.onclick = () => {
-            this.processSelection('explain', text);
-            menu.remove();
-        };
-
-        menu.appendChild(translateBtn);
-        menu.appendChild(explainBtn);
-        document.body.appendChild(menu);
-
-        // Remove menu on click outside
-        setTimeout(() => {
-            document.addEventListener('click', () => menu.remove(), { once: true });
-        }, 100);
-    }
-
-    setupHoverTranslation() {
-        let hoverTimeout;
-
-        document.addEventListener('mouseover', (e) => {
-            clearTimeout(hoverTimeout);
-
-            hoverTimeout = setTimeout(async () => {
-                const text = e.target.textContent?.trim();
-                if (!text || text.length > 100) return;
-
-                // Check if text looks like Japanese
-                if (this.isJapaneseText(text)) {
-                    try {
-                        const result = await this.processWithClaude('translate', text);
-                        const uiFeedback = this.components.get('uiFeedback');
-                        if (uiFeedback) {
-                            uiFeedback.showTooltip(e.target, result.content, 'translation');
-                        }
-                    } catch (error) {
-                        this.logger.debug('Hover translation failed:', error);
-                    }
-                }
-            }, 500); // 500ms delay
-        });
-
-        document.addEventListener('mouseout', () => {
-            clearTimeout(hoverTimeout);
-        });
-    }
-
-    isJapaneseText(text) {
-        const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
-        return japaneseRegex.test(text);
-    }
-
-    async processWithClaude(action, text, context = {}) {
         try {
-            // Add timeout to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Request timeout - no response from background script')), 10000);
-            });
-
-            const messagePromise = chrome.runtime.sendMessage({
-                action: action,
-                text: text,
-                context: context,
-                url: window.location.href
-            });
-
-            const response = await Promise.race([messagePromise, timeoutPromise]);
-
-            if (!response) {
-                throw new Error('No response from background script - check if API key is configured');
+            // Initialize UI Feedback system
+            const uiFeedback = new UIFeedback();
+            await uiFeedback.init();
+            this.components.set('uiFeedback', uiFeedback);
+            
+            // Initialize Selection Handler
+            const selectionHandler = new SelectionHandler(this);
+            await selectionHandler.init();
+            this.components.set('selectionHandler', selectionHandler);
+            
+            // Initialize Ontology Highlighter if enabled
+            if (this.config.highlightMedicalTerms) {
+                // Make sure ontology is loaded
+                if (!window.EnhancedMedicalOntology) {
+                    this.logger.debug('Loading medical ontology');
+                    await this.loadOntology();
+                }
+                
+                const ontologyHighlighter = new OntologyHighlighter(window.EnhancedMedicalOntology);
+                await ontologyHighlighter.init();
+                this.components.set('ontologyHighlighter', ontologyHighlighter);
+                
+                // Scan the document for medical terms
+                ontologyHighlighter.highlightDocument();
             }
-
-            if (response.error) {
-                throw new Error(response.error);
-            }
-
-            return response;
+            
+            this.logger.info('All components initialized');
         } catch (error) {
-            this.logger.error(`Claude API error (${action}):`, error);
+            this.logger.error('Failed to initialize components:', error);
             throw error;
         }
     }
 
-    quickTranslateSelection() {
-        const selection = window.getSelection();
-        const text = selection.toString().trim();
-
-        if (text) {
-            this.processSelection('translate', text);
-        }
-    }
-
-    explainSelection() {
-        const selection = window.getSelection();
-        const text = selection.toString().trim();
-
-        if (text) {
-            this.processSelection('explain', text);
-        }
-    }
-
-    async processSelection(action, text) {
+    async loadOntology() {
+        this.logger.debug('Loading medical ontology');
+        
         try {
-            const uiFeedback = this.components.get('uiFeedback');
-            let loader = null;
+            // Check if already loaded
+            if (window.EnhancedMedicalOntology) {
+                this.logger.debug('Medical ontology already loaded');
+                return;
+            }
             
-            if (uiFeedback && uiFeedback.showProcessingOverlay) {
-                loader = uiFeedback.showProcessingOverlay(this.getLoadingMessage(action));
-            } else {
-                // Fallback loading indicator
-                this.showSimpleLoader(this.getLoadingMessage(action));
-            }
-
-            const response = await this.processWithClaude(action, text);
-
-            if (loader) {
-                loader.remove();
-            } else {
-                this.hideSimpleLoader();
-            }
-
-            // Show result
-            if (uiFeedback && uiFeedback.showPopup) {
-                uiFeedback.showPopup({
-                    title: this.getTitleForAction(action),
-                    subtitle: this.getSubtitleForAction(action),
-                    content: response.content,
-                    originalText: text,
-                    type: action,
-                    showOptions: true,
-                    onAccept: (options) => {
-                        this.handleActionResult(action, text, response.content, options);
-                    }
-                });
-            } else {
-                // Fallback: simple alert or console output
-                this.showSimpleResult(action, response.content);
-            }
-
-        } catch (error) {
-            this.logger.error(`Failed to process ${action}:`, error);
-            this.hideSimpleLoader();
+            // Try to load from extension resources
+            const ontologyScript = document.createElement('script');
+            ontologyScript.src = chrome.runtime.getURL('ontology/enhanced-medical-ontology.js');
             
-            const uiFeedback = this.components.get('uiFeedback');
-            if (uiFeedback && uiFeedback.showPopup) {
-                uiFeedback.showPopup({
-                    title: 'Error',
-                    content: `Failed to ${action}: ${error.message}`,
-                    type: 'error'
-                });
-            } else {
-                // Fallback error display
-                alert(`Error: Failed to ${action} - ${error.message}`);
-            }
-        }
-    }
-
-    showSimpleLoader(message) {
-        const loader = document.createElement('div');
-        loader.id = 'inline-feedback-loader';
-        loader.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #333;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            z-index: 10000;
-            font-family: -apple-system, system-ui, sans-serif;
-            font-size: 14px;
-        `;
-        loader.textContent = message;
-        document.body.appendChild(loader);
-    }
-
-    hideSimpleLoader() {
-        const loader = document.getElementById('inline-feedback-loader');
-        if (loader) loader.remove();
-    }
-
-    showSimpleResult(action, content) {
-        const result = document.createElement('div');
-        result.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border: 2px solid #007cba;
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 500px;
-            max-height: 400px;
-            overflow-y: auto;
-            z-index: 10000;
-            font-family: -apple-system, system-ui, sans-serif;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        `;
-
-        const title = document.createElement('h3');
-        title.textContent = this.getTitleForAction(action);
-        title.style.cssText = 'margin: 0 0 10px 0; color: #333;';
-
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = content;
-        contentDiv.style.cssText = 'margin: 10px 0; line-height: 1.4; color: #555;';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'Close';
-        closeBtn.style.cssText = 'margin-top: 15px; padding: 8px 16px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer;';
-        closeBtn.onclick = () => result.remove();
-
-        result.appendChild(title);
-        result.appendChild(contentDiv);
-        result.appendChild(closeBtn);
-        document.body.appendChild(result);
-
-        // Auto-close after 10 seconds
-        setTimeout(() => result.remove(), 10000);
-    }
-
-    getLoadingMessage(action) {
-        const messages = {
-            translate: 'Translating...',
-            explain: 'Explaining...',
-            summarize: 'Summarizing...',
-            correct: 'Correcting...'
-        };
-        return messages[action] || 'Processing...';
-    }
-
-    getTitleForAction(action) {
-        const titles = {
-            translate: 'Translation Available',
-            explain: 'Explanation',
-            summarize: 'Summary',
-            correct: 'Suggested Correction'
-        };
-        return titles[action] || 'Claude Response';
-    }
-
-    getSubtitleForAction(action) {
-        const subtitles = {
-            translate: 'Claude has translated this text',
-            explain: 'Claude can help explain this concept',
-            summarize: 'Claude has summarized this content',
-            correct: 'Claude found a potential improvement'
-        };
-        return subtitles[action] || '';
-    }
-
-    handleActionResult(action, originalText, result, options) {
-    // Store in local history if requested
-        if (options.addToNotes) {
-            this.saveToHistory(action, originalText, result);
-        }
-
-        // Copy to clipboard if it's a translation
-        if (action === 'translate') {
-            navigator.clipboard.writeText(result);
-        }
-
-        this.logger.info(`${action} completed for text: ${originalText.substring(0, 50)}...`);
-    }
-
-    async saveToHistory(action, originalText, result) {
-        try {
-            const history = await chrome.storage.local.get(['history']) || { history: [] };
-            history.history.unshift({
-                action,
-                originalText,
-                result,
-                timestamp: Date.now(),
-                url: window.location.href
+            const evidenceScript = document.createElement('script');
+            evidenceScript.src = chrome.runtime.getURL('ontology/research-evidence-db.js');
+            
+            // Wait for scripts to load
+            await new Promise((resolve) => {
+                let loaded = 0;
+                const checkLoaded = () => {
+                    loaded++;
+                    if (loaded === 2) resolve();
+                };
+                
+                ontologyScript.onload = checkLoaded;
+                evidenceScript.onload = checkLoaded;
+                
+                document.head.appendChild(ontologyScript);
+                document.head.appendChild(evidenceScript);
             });
-
-            // Keep only last 100 items
-            history.history = history.history.slice(0, 100);
-
-            await chrome.storage.local.set({ history: history.history });
+            
+            this.logger.info('Medical ontology loaded successfully');
         } catch (error) {
-            this.logger.error('Failed to save to history:', error);
+            this.logger.error('Failed to load medical ontology:', error);
+            
+            // Create a basic fallback ontology
+            window.EnhancedMedicalOntology = {
+                getBiomaterials: () => ({
+                    titanium: {
+                        name: 'Titanium',
+                        category: 'metal',
+                        regex: /\b(titanium|Ti-6Al-4V)\b/gi
+                    },
+                    peek: {
+                        name: 'PEEK',
+                        category: 'polymer',
+                        regex: /\b(PEEK|polyetheretherketone)\b/gi
+                    },
+                    nitinol: {
+                        name: 'Nitinol',
+                        category: 'shape_memory_alloy',
+                        regex: /\b(nitinol|NiTi)\b/gi
+                    }
+                })
+            };
+            
+            this.logger.warn('Using fallback basic ontology');
         }
     }
 
-    showActivationMessage() {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #4CAF50;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: -apple-system, system-ui, sans-serif;
-      z-index: 10000;
-      opacity: 0;
-      transition: opacity 0.3s;
-    `;
-        notification.textContent = '✓ Inline Feedback Active';
-
-        document.body.appendChild(notification);
-        setTimeout(() => notification.style.opacity = '1', 10);
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-        }, 2000);
-    }
-}
-
-// Utility classes
-class Logger {
-    constructor(component) {
-        this.component = component;
+    setupMessageListeners() {
+        this.logger.debug('Setting up message listeners');
+        
+        // Listen for messages from background script
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            this.logger.debug('Received message:', message);
+            
+            if (message.action === 'getStatus') {
+                sendResponse({
+                    enabled: this.config.enabled,
+                    components: Array.from(this.components.keys()),
+                    highlightStats: this.getHighlightStats()
+                });
+            } else if (message.action === 'toggleHighlighting') {
+                this.toggleHighlighting(message.enabled);
+                sendResponse({ success: true });
+            } else if (message.action === 'toggleDebugMode') {
+                this.toggleDebugMode(message.enabled);
+                sendResponse({ success: true });
+            }
+            
+            return true; // Keep the message channel open for async response
+        });
     }
 
-    debug(message, ...args) {
-        if (window.inlineFeedbackConfig?.debugMode) {
-            console.debug(`[${this.component}]`, message, ...args);
+    getHighlightStats() {
+        const highlighter = this.components.get('ontologyHighlighter');
+        if (!highlighter) return { enabled: false, count: 0 };
+        
+        return highlighter.getHighlightStats();
+    }
+
+    toggleHighlighting(enabled) {
+        this.logger.info(`${enabled ? 'Enabling' : 'Disabling'} medical term highlighting`);
+        
+        this.config.highlightMedicalTerms = enabled;
+        this.saveConfig();
+        
+        const highlighter = this.components.get('ontologyHighlighter');
+        
+        if (enabled && !highlighter) {
+            // Re-initialize highlighter
+            this.loadOntology().then(() => {
+                const newHighlighter = new OntologyHighlighter(window.EnhancedMedicalOntology);
+                newHighlighter.init().then(() => {
+                    this.components.set('ontologyHighlighter', newHighlighter);
+                    newHighlighter.highlightDocument();
+                });
+            });
+        } else if (!enabled && highlighter) {
+            // Remove highlights and destroy highlighter
+            highlighter.removeHighlights();
+            highlighter.destroy();
+            this.components.delete('ontologyHighlighter');
         }
     }
 
-    info(message, ...args) {
-        console.log(`[${this.component}]`, message, ...args);
+    toggleDebugMode(enabled) {
+        this.logger.info(`${enabled ? 'Enabling' : 'Disabling'} debug mode`);
+        
+        this.config.debugMode = enabled;
+        this.saveConfig();
+        
+        // Update logger debug mode
+        this.logger.setDebugMode(enabled);
+        
+        // Update component loggers
+        for (const component of this.components.values()) {
+            if (component.logger) {
+                component.logger.setDebugMode(enabled);
+            }
+        }
     }
 
-    warn(message, ...args) {
-        console.warn(`[${this.component}]`, message, ...args);
+    processSelection(action, text) {
+        this.logger.debug(`Processing selection action: ${action} for text: ${text.substring(0, 30)}...`);
+        
+        // Handle different actions
+        switch (action) {
+            case 'explain':
+                this.explainText(text);
+                break;
+            case 'translate':
+                this.translateText(text);
+                break;
+            case 'medical-explain':
+                this.explainMedicalTerm(text);
+                break;
+            case 'technical-explain':
+                this.explainTechnicalTerm(text);
+                break;
+            case 'summarize':
+                this.summarizeText(text);
+                break;
+            default:
+                this.logger.warn(`Unknown action: ${action}`);
+        }
     }
 
-    error(message, ...args) {
-        console.error(`[${this.component}]`, message, ...args);
+    explainText(text) {
+        this.logger.debug('Explaining text');
+        
+        // Send message to background script for processing
+        chrome.runtime.sendMessage({
+            action: 'processText',
+            type: 'explain',
+            text: text
+        }, (response) => {
+            if (response && response.success) {
+                this.logger.debug('Explanation request sent successfully');
+            } else {
+                this.logger.warn('Failed to send explanation request');
+            }
+        });
+    }
+
+    translateText(text) {
+        this.logger.debug('Translating text');
+        
+        // Send message to background script for processing
+        chrome.runtime.sendMessage({
+            action: 'processText',
+            type: 'translate',
+            text: text
+        });
+    }
+
+    explainMedicalTerm(text) {
+        this.logger.debug('Explaining medical term');
+        
+        // Try to find the term in the ontology
+        let termInfo = null;
+        
+        if (window.EnhancedMedicalOntology) {
+            termInfo = window.EnhancedMedicalOntology.findMaterial(text);
+        }
+        
+        // Send message to background script for processing
+        chrome.runtime.sendMessage({
+            action: 'processText',
+            type: 'medical-explain',
+            text: text,
+            context: {
+                termInfo: termInfo
+            }
+        });
+    }
+
+    explainTechnicalTerm(text) {
+        this.logger.debug('Explaining technical term');
+        
+        // Send message to background script for processing
+        chrome.runtime.sendMessage({
+            action: 'processText',
+            type: 'technical-explain',
+            text: text
+        });
+    }
+
+    summarizeText(text) {
+        this.logger.debug('Summarizing text');
+        
+        // Send message to background script for processing
+        chrome.runtime.sendMessage({
+            action: 'processText',
+            type: 'summarize',
+            text: text
+        });
     }
 }
 
-class ExtensionError extends Error {
-    constructor(message, cause = null) {
-        super(message);
-        this.name = 'ExtensionError';
-        this.cause = cause;
-    }
-}
+// Initialize the extension when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Create and initialize the extension
+    const extension = new InlineFeedbackExtension();
+    extension.init();
+});
 
-class ComponentError extends ExtensionError {
-    constructor(message, cause = null) {
-        super(message, cause);
-        this.name = 'ComponentError';
-    }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
-
-async function init() {
-    try {
-        const extension = new InlineFeedbackExtension();
-        await extension.init();
-
-        // Make available globally for debugging
-        window.inlineFeedbackExtension = extension;
-    } catch (error) {
-        console.error('Failed to initialize Inline Feedback Extension:', error);
-    }
+// Also initialize if document is already loaded (for dynamic injection)
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    const extension = new InlineFeedbackExtension();
+    extension.init();
 }

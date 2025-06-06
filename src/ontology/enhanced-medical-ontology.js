@@ -1,429 +1,422 @@
 /**
- * Enhanced Medical Ontology System
- * Based on ProjectDebbie's DEB (Devices, Experimental scaffolds, and Biomaterials) ontology
- * Integrated with evidence-based research data for biocompatibility assessment
+ * Enhanced Medical Ontology - Provides medical ontology data
+ * Contains information about biomaterials and medical devices
  */
 
-class EnhancedMedicalOntology {
-    constructor() {
-        this.version = '2.0.0';
-        this.lastUpdated = '2024-06-05';
-        this.evidenceLevel = 'research-backed';
-        this.sources = [
-            'ProjectDebbie DEB Ontology',
-            'EU Horizon 2020 Research Database',
-            'PubMed Gold Standard Set (1230+ studies)',
-            'FDA Device Classifications',
-            'ISO 10993 Standards'
-        ];
-    }
-
-    // Core biomaterials with research evidence
-    getBiomaterials() {
-        return {
-            // METALS
-            titanium: {
-                name: 'Titanium',
-                category: 'metal',
-                subcategory: 'biomedical_alloy',
-                chemicalFormula: 'Ti',
-                synonyms: ['Ti', 'titanium alloy', 'Ti-6Al-4V', 'Grade 2 titanium', 'Grade 4 titanium'],
-                regex: /\b(titanium|Ti-6Al-4V|Grade\s+[1-4]\s+titanium|Ti\s+alloy|commercially\s+pure\s+titanium)\b/gi,
-
-                properties: {
-                    density: '4.51 g/cm³',
-                    youngsModulus: '114 GPa',
-                    yieldStrength: '880 MPa',
-                    biocompatibility: 'excellent',
-                    corrosionResistance: 'excellent',
-                    osseointegration: 'excellent'
-                },
-
-                medicalApplications: [
-                    'dental implants',
-                    'orthopedic implants',
-                    'joint replacements',
-                    'bone plates',
-                    'spinal rods',
-                    'cardiovascular stents'
-                ],
-
-                fdaClassification: 'Class II/III',
-                isoStandards: ['ISO 5832-2', 'ISO 5832-3', 'ASTM F136'],
-
-                researchEvidence: {
-                    successRate: '97.3%',
-                    studyCount: 156,
-                    evidenceLevel: 'high',
-                    contraindications: ['titanium sensitivity', 'severe osteoporosis'],
-                    adverseEvents: ['peri-implantitis', 'implant loosening', 'allergic reactions'],
-                    pmidReferences: ['12345678', '23456789', '34567890'] // Sample PMIDs
-                },
-
-                biologicalEffects: {
-                    biocompatibility: 'excellent',
-                    osseointegration: 'promotes bone growth',
-                    inflammation: 'minimal inflammatory response',
-                    toxicity: 'non-toxic'
-                }
+// Create the Enhanced Medical Ontology
+const EnhancedMedicalOntology = {
+    // Biomaterials data
+    biomaterials: [
+        {
+            id: 'titanium',
+            name: 'Titanium',
+            category: 'metal',
+            synonyms: ['Ti', 'Titanium alloy', 'Ti-6Al-4V'],
+            description: 'A strong, lightweight, corrosion-resistant metal commonly used in medical implants and devices.',
+            properties: {
+                density: '4.5 g/cm³',
+                elasticModulus: '110 GPa',
+                tensileStrength: '900 MPa',
+                biocompatibility: 'Excellent',
+                corrosionResistance: 'Excellent'
             },
-
-            peek: {
-                name: 'PEEK (Polyetheretherketone)',
-                category: 'polymer',
-                subcategory: 'thermoplastic',
-                chemicalFormula: '(C₆H₄)₂OC₆H₄CO',
-                synonyms: ['PEEK', 'polyetheretherketone', 'poly ether ether ketone', 'PAEK'],
-                regex: /\b(PEEK|polyetheretherketone|poly\s*ether\s*ether\s*ketone|PAEK)\b/gi,
-
-                properties: {
-                    density: '1.32 g/cm³',
-                    youngsModulus: '3.6 GPa',
-                    tensileStrength: '90-100 MPa',
-                    biocompatibility: 'excellent',
-                    radiolucency: 'radiolucent',
-                    chemicalResistance: 'excellent'
-                },
-
-                medicalApplications: [
-                    'spinal implants',
-                    'orthopedic devices',
-                    'dental abutments',
-                    'cranial implants',
-                    'trauma plates'
-                ],
-
-                fdaClassification: 'Class II',
-                isoStandards: ['ISO 19642', 'ASTM F2026'],
-
-                researchEvidence: {
-                    successRate: '94.7%',
-                    studyCount: 89,
-                    evidenceLevel: 'high',
-                    contraindications: ['polymer allergy'],
-                    adverseEvents: ['stress shielding', 'wear particles'],
-                    pmidReferences: ['45678901', '56789012']
-                },
-
-                biologicalEffects: {
-                    biocompatibility: 'excellent',
-                    osseointegration: 'good with surface treatment',
-                    inflammation: 'minimal',
-                    toxicity: 'non-toxic'
-                }
+            applications: [
+                'Orthopedic implants',
+                'Dental implants',
+                'Cardiovascular devices',
+                'Craniofacial reconstruction',
+                'Spinal devices'
+            ],
+            standards: [
+                'ASTM F67',
+                'ASTM F136',
+                'ISO 5832-2',
+                'ISO 5832-3'
+            ]
+        },
+        {
+            id: 'peek',
+            name: 'PEEK',
+            category: 'polymer',
+            synonyms: ['Polyetheretherketone', 'Polyether ether ketone'],
+            description: 'A high-performance thermoplastic polymer with excellent mechanical properties and biocompatibility.',
+            properties: {
+                density: '1.3 g/cm³',
+                elasticModulus: '3-4 GPa',
+                tensileStrength: '90-100 MPa',
+                biocompatibility: 'Excellent',
+                thermalStability: 'Excellent'
             },
-
-            nitinol: {
-                name: 'Nitinol',
-                category: 'shape_memory_alloy',
-                subcategory: 'smart_material',
-                chemicalFormula: 'NiTi',
-                synonyms: ['nitinol', 'NiTi', 'shape memory alloy', 'nickel titanium'],
-                regex: /\b(nitinol|NiTi|shape\s*memory\s*alloy|nickel\s*titanium)\b/gi,
-
-                properties: {
-                    density: '6.45 g/cm³',
-                    transformationTemperature: '37-40°C',
-                    superelasticity: 'excellent',
-                    biocompatibility: 'good',
-                    corrosionResistance: 'good',
-                    fatigue_resistance: 'excellent'
-                },
-
-                medicalApplications: [
-                    'cardiovascular stents',
-                    'orthodontic wires',
-                    'vascular filters',
-                    'surgical instruments',
-                    'guidewires'
-                ],
-
-                fdaClassification: 'Class II/III',
-                isoStandards: ['ISO 5832-11', 'ASTM F2063'],
-
-                researchEvidence: {
-                    successRate: '92.1%',
-                    studyCount: 67,
-                    evidenceLevel: 'high',
-                    contraindications: ['nickel allergy', 'MRI incompatibility'],
-                    adverseEvents: ['nickel leaching', 'thrombosis', 'restenosis'],
-                    pmidReferences: ['67890123', '78901234']
-                },
-
-                biologicalEffects: {
-                    biocompatibility: 'good with proper surface treatment',
-                    endothelialization: 'promotes in cardiovascular applications',
-                    inflammation: 'moderate without surface treatment',
-                    toxicity: 'potential nickel toxicity'
-                }
+            applications: [
+                'Spinal implants',
+                'Orthopedic devices',
+                'Dental implants',
+                'Cranial implants',
+                'Trauma fixation'
+            ],
+            standards: [
+                'ASTM F2026',
+                'ISO 10993'
+            ]
+        },
+        {
+            id: 'hydroxyapatite',
+            name: 'Hydroxyapatite',
+            category: 'ceramic',
+            synonyms: ['HA', 'Calcium hydroxyapatite', 'Ca₁₀(PO₄)₆(OH)₂'],
+            description: 'A naturally occurring mineral form of calcium apatite, similar to the mineral component of bone and teeth.',
+            properties: {
+                density: '3.16 g/cm³',
+                compressiveStrength: '400-900 MPa',
+                biocompatibility: 'Excellent',
+                bioactivity: 'High',
+                biodegradation: 'Slow'
             },
-
-            // CERAMICS
-            hydroxyapatite: {
-                name: 'Hydroxyapatite',
-                category: 'ceramic',
-                subcategory: 'bioactive_ceramic',
-                chemicalFormula: 'Ca₅(PO₄)₃(OH)',
-                synonyms: ['hydroxyapatite', 'HA', 'HAP', 'calcium phosphate', 'bone mineral'],
-                regex: /\b(hydroxyapatite|HA|HAP|calcium\s*phosphate|bone\s*mineral)\b/gi,
-
-                properties: {
-                    density: '3.16 g/cm³',
-                    compressiveStrength: '917 MPa',
-                    bioactivity: 'excellent',
-                    osteoconductivity: 'excellent',
-                    resorbability: 'slow'
-                },
-
-                medicalApplications: [
-                    'bone grafts',
-                    'dental implants',
-                    'coating material',
-                    'bone void fillers',
-                    'periodontal regeneration'
-                ],
-
-                fdaClassification: 'Class II',
-                isoStandards: ['ISO 13779', 'ASTM F1185'],
-
-                researchEvidence: {
-                    successRate: '89.4%',
-                    studyCount: 124,
-                    evidenceLevel: 'high',
-                    contraindications: ['active infection', 'poor bone quality'],
-                    adverseEvents: ['foreign body reaction', 'delayed healing'],
-                    pmidReferences: ['89012345', '90123456']
-                },
-
-                biologicalEffects: {
-                    biocompatibility: 'excellent',
-                    osseointegration: 'excellent - mimics bone mineral',
-                    inflammation: 'minimal',
-                    osteogenesis: 'promotes bone formation'
-                }
+            applications: [
+                'Bone graft substitutes',
+                'Dental implants',
+                'Coatings for metal implants',
+                'Bone tissue engineering',
+                'Drug delivery systems'
+            ],
+            standards: [
+                'ASTM F1185',
+                'ISO 13779'
+            ]
+        },
+        {
+            id: 'plga',
+            name: 'PLGA',
+            category: 'polymer',
+            synonyms: ['Poly(lactic-co-glycolic acid)', 'Poly(lactide-co-glycolide)'],
+            description: 'A biodegradable copolymer used in a variety of biomedical applications, particularly drug delivery and tissue engineering.',
+            properties: {
+                density: '1.3 g/cm³',
+                glassTranTemp: '45-55°C',
+                degradationTime: '1-6 months',
+                biocompatibility: 'Good',
+                biodegradation: 'Controllable'
             },
-
-            // POLYMERS
-            uhmwpe: {
-                name: 'UHMWPE (Ultra-High Molecular Weight Polyethylene)',
-                category: 'polymer',
-                subcategory: 'bearing_surface',
-                chemicalFormula: '(C₂H₄)ₙ',
-                synonyms: ['UHMWPE', 'ultra high molecular weight polyethylene', 'bearing polyethylene'],
-                regex: /\b(UHMWPE|ultra\s*high\s*molecular\s*weight\s*polyethylene|bearing\s*polyethylene)\b/gi,
-
-                properties: {
-                    density: '0.93-0.94 g/cm³',
-                    molecularWeight: '>3,000,000 g/mol',
-                    wearResistance: 'excellent',
-                    biocompatibility: 'excellent',
-                    creepResistance: 'good'
-                },
-
-                medicalApplications: [
-                    'joint bearing surfaces',
-                    'acetabular cups',
-                    'tibial inserts',
-                    'spinal disc replacements'
-                ],
-
-                fdaClassification: 'Class II',
-                isoStandards: ['ISO 5834', 'ASTM F648'],
-
-                researchEvidence: {
-                    successRate: '91.8%',
-                    studyCount: 98,
-                    evidenceLevel: 'high',
-                    contraindications: ['young active patients', 'metal sensitivity'],
-                    adverseEvents: ['wear particles', 'osteolysis', 'loosening'],
-                    pmidReferences: ['01234567', '12345670']
-                },
-
-                biologicalEffects: {
-                    biocompatibility: 'excellent',
-                    wear_debris: 'can cause inflammatory response',
-                    toxicity: 'non-toxic',
-                    longevity: '15-20 years typical lifespan'
-                }
-            }
-        };
-    }
-
-    // Medical applications with research backing
-    getMedicalApplications() {
-        return {
-            cardiovascularStents: {
-                name: 'Cardiovascular Stents',
-                category: 'medical_device',
-                materials: ['nitinol', 'stainless steel', 'cobalt chromium'],
-                procedures: ['percutaneous coronary intervention', 'angioplasty'],
-                evidenceBase: {
-                    studyCount: 245,
-                    patientYears: 1200000,
-                    successRate: '94.2%',
-                    complicationRate: '5.8%'
-                }
+            applications: [
+                'Drug delivery systems',
+                'Tissue engineering scaffolds',
+                'Sutures',
+                'Stents',
+                'Orthopedic fixation devices'
+            ],
+            standards: [
+                'ASTM F1925',
+                'ISO 10993'
+            ]
+        },
+        {
+            id: 'stainlessSteel316L',
+            name: 'Stainless Steel 316L',
+            category: 'metal',
+            synonyms: ['SS316L', '316L SS', 'Surgical stainless steel'],
+            description: 'A low-carbon variant of stainless steel with excellent corrosion resistance and biocompatibility.',
+            properties: {
+                density: '8.0 g/cm³',
+                elasticModulus: '200 GPa',
+                tensileStrength: '485-860 MPa',
+                biocompatibility: 'Good',
+                corrosionResistance: 'Very good'
             },
-
-            orthopedicImplants: {
-                name: 'Orthopedic Implants',
-                category: 'medical_device',
-                materials: ['titanium', 'cobalt chromium', 'UHMWPE', 'PEEK'],
-                procedures: ['total joint replacement', 'fracture fixation', 'spinal fusion'],
-                evidenceBase: {
-                    studyCount: 189,
-                    patientYears: 890000,
-                    successRate: '96.1%',
-                    revisionRate: '8.2% at 15 years'
-                }
+            applications: [
+                'Orthopedic implants',
+                'Cardiovascular stents',
+                'Surgical instruments',
+                'Trauma fixation devices',
+                'Dental appliances'
+            ],
+            standards: [
+                'ASTM F138',
+                'ASTM F139',
+                'ISO 5832-1'
+            ]
+        },
+        {
+            id: 'cobaltChromium',
+            name: 'Cobalt Chromium',
+            category: 'metal',
+            synonyms: ['CoCr', 'Cobalt-chrome', 'Vitallium'],
+            description: 'An alloy with high strength, wear resistance, and biocompatibility, commonly used in load-bearing implants.',
+            properties: {
+                density: '8.3-9.1 g/cm³',
+                elasticModulus: '210-250 GPa',
+                tensileStrength: '600-1795 MPa',
+                biocompatibility: 'Good',
+                wearResistance: 'Excellent'
             },
-
-            dentalImplants: {
-                name: 'Dental Implants',
-                category: 'medical_device',
-                materials: ['titanium', 'zirconia', 'PEEK'],
-                procedures: ['single tooth replacement', 'full arch restoration'],
-                evidenceBase: {
-                    studyCount: 167,
-                    patientYears: 450000,
-                    successRate: '97.3%',
-                    survivalRate: '95.6% at 10 years'
-                }
-            }
-        };
-    }
-
-    // Biological processes and effects
-    getBiologicalProcesses() {
-        return {
-            osseointegration: {
-                name: 'Osseointegration',
-                definition: 'Direct structural and functional connection between bone and implant surface',
-                materials: ['titanium', 'hydroxyapatite', 'zirconia'],
-                timeframe: '3-6 months',
-                factors: ['surface roughness', 'material composition', 'surgical technique'],
-                evidenceLevel: 'high'
+            applications: [
+                'Joint replacements',
+                'Dental prosthetics',
+                'Cardiovascular stents',
+                'Spinal devices',
+                'Orthopedic implants'
+            ],
+            standards: [
+                'ASTM F75',
+                'ASTM F90',
+                'ASTM F562',
+                'ISO 5832-4',
+                'ISO 5832-5',
+                'ISO 5832-12'
+            ]
+        },
+        {
+            id: 'zirconia',
+            name: 'Zirconia',
+            category: 'ceramic',
+            synonyms: ['ZrO₂', 'Zirconium dioxide', 'Zirconium oxide'],
+            description: 'A ceramic material with high strength, fracture toughness, and biocompatibility, used in dental and orthopedic applications.',
+            properties: {
+                density: '6.05 g/cm³',
+                compressiveStrength: '2000 MPa',
+                fractureToughness: '5-10 MPa·m½',
+                biocompatibility: 'Excellent',
+                wearResistance: 'Excellent'
             },
-
-            biocompatibility: {
-                name: 'Biocompatibility',
-                definition: 'Ability of material to perform with appropriate host response',
-                testStandards: ['ISO 10993', 'USP Class VI'],
-                evaluationMethods: ['cytotoxicity', 'sensitization', 'irritation'],
-                evidenceLevel: 'high'
+            applications: [
+                'Dental implants',
+                'Dental crowns and bridges',
+                'Femoral heads in hip replacements',
+                'Orthopedic implants',
+                'Cutting instruments'
+            ],
+            standards: [
+                'ISO 13356',
+                'ASTM F1873'
+            ]
+        },
+        {
+            id: 'collagen',
+            name: 'Collagen',
+            category: 'natural',
+            synonyms: ['Type I collagen', 'Collagen matrix'],
+            description: 'A natural protein that is the main component of connective tissues, widely used in tissue engineering and regenerative medicine.',
+            properties: {
+                source: 'Bovine, porcine, or human',
+                degradationTime: 'Variable (days to months)',
+                biocompatibility: 'Excellent',
+                immunogenicity: 'Low to moderate',
+                cellAdhesion: 'Excellent'
             },
-
-            foreignBodyReaction: {
-                name: 'Foreign Body Reaction',
-                definition: 'Inflammatory response to implanted foreign material',
-                phases: ['acute inflammation', 'chronic inflammation', 'fibrous encapsulation'],
-                duration: 'weeks to months',
-                severity: ['mild', 'moderate', 'severe'],
-                evidenceLevel: 'high'
-            }
-        };
-    }
-
-    // Research evidence integration
-    getResearchEvidence(materialId, studyType = 'all') {
-        const material = this.getBiomaterials()[materialId];
-        if (!material) return null;
-
-        return {
-            material: materialId,
-            studyType: studyType,
-            evidence: material.researchEvidence,
-            biologicalEffects: material.biologicalEffects,
-            lastUpdated: this.lastUpdated,
-            evidenceLevel: material.researchEvidence.evidenceLevel
-        };
-    }
-
-    // Generate research-backed explanations
-    generateEvidenceBasedExplanation(materialId) {
-        const material = this.getBiomaterials()[materialId];
-        if (!material) return 'Material not found in database';
-
-        const evidence = material.researchEvidence;
-
-        return `${material.name} is a ${material.category} with ${evidence.evidenceLevel} evidence from ${evidence.studyCount} research studies. 
-    
-Clinical Success Rate: ${evidence.successRate}
-Biocompatibility: ${material.biologicalEffects.biocompatibility}
-FDA Classification: ${material.fdaClassification}
-
-Key Properties:
-${Object.entries(material.properties)
-        .map(([key, value]) => `• ${key}: ${value}`)
-        .join('\n')}
-
-Medical Applications:
-${material.medicalApplications.map(app => `• ${app}`).join('\n')}
-
-Contraindications: ${evidence.contraindications.join(', ')}
-Potential Adverse Events: ${evidence.adverseEvents.join(', ')}
-
-Standards: ${material.isoStandards.join(', ')}`;
-    }
-
-    // Get material by name or synonym
-    findMaterial(searchTerm) {
-        const materials = this.getBiomaterials();
-        const lowerSearch = searchTerm.toLowerCase();
-
-        for (const [id, material] of Object.entries(materials)) {
-            if (material.name.toLowerCase().includes(lowerSearch) ||
-          material.synonyms.some(syn => syn.toLowerCase().includes(lowerSearch))) {
-                return { id, ...material };
-            }
+            applications: [
+                'Wound dressings',
+                'Tissue engineering scaffolds',
+                'Soft tissue augmentation',
+                'Drug delivery systems',
+                'Hemostatic agents'
+            ],
+            standards: [
+                'ASTM F2212',
+                'ISO 10993'
+            ]
+        },
+        {
+            id: 'chitosan',
+            name: 'Chitosan',
+            category: 'natural',
+            synonyms: ['Poly-D-glucosamine', 'Deacetylated chitin'],
+            description: 'A linear polysaccharide derived from chitin, with antimicrobial and wound-healing properties.',
+            properties: {
+                source: 'Crustacean shells',
+                degradationTime: 'Weeks to months',
+                biocompatibility: 'Good',
+                antimicrobial: 'Yes',
+                biodegradation: 'Enzymatic'
+            },
+            applications: [
+                'Wound dressings',
+                'Drug delivery systems',
+                'Tissue engineering scaffolds',
+                'Hemostatic agents',
+                'Antimicrobial coatings'
+            ],
+            standards: [
+                'ASTM F2103',
+                'ISO 10993'
+            ]
+        },
+        {
+            id: 'carbonFiberReinforced',
+            name: 'Carbon Fiber Reinforced Polymer',
+            category: 'composite',
+            synonyms: ['CFRP', 'Carbon composite', 'Carbon fiber composite'],
+            description: 'A strong, lightweight composite material consisting of carbon fibers embedded in a polymer matrix.',
+            properties: {
+                density: '1.5-2.0 g/cm³',
+                elasticModulus: '70-200 GPa',
+                tensileStrength: '600-3000 MPa',
+                biocompatibility: 'Good',
+                fatigueResistance: 'Excellent'
+            },
+            applications: [
+                'Orthopedic implants',
+                'Prosthetic limbs',
+                'Spinal devices',
+                'External fixation devices',
+                'Imaging-compatible devices'
+            ],
+            standards: [
+                'ISO 10993',
+                'ASTM D3039',
+                'ASTM D4762'
+            ]
         }
-        return null;
+    ],
+    
+    // Medical devices data
+    medicalDevices: [
+        {
+            id: 'hipImplant',
+            name: 'Hip Implant',
+            category: 'orthopedic',
+            materials: ['titanium', 'cobaltChromium', 'polyethylene', 'ceramics'],
+            description: 'A prosthetic device used to replace a damaged hip joint, typically consisting of a femoral stem, femoral head, and acetabular cup.',
+            applications: [
+                'Total hip replacement',
+                'Hip resurfacing',
+                'Partial hip replacement'
+            ],
+            standards: [
+                'ISO 7206',
+                'ASTM F2068',
+                'ASTM F2033'
+            ]
+        },
+        {
+            id: 'dentalImplant',
+            name: 'Dental Implant',
+            category: 'dental',
+            materials: ['titanium', 'zirconia', 'titaniumAlloy'],
+            description: 'A surgical component that interfaces with the bone of the jaw or skull to support dental prostheses.',
+            applications: [
+                'Single tooth replacement',
+                'Multiple tooth replacement',
+                'Full arch reconstruction',
+                'Overdenture support'
+            ],
+            standards: [
+                'ISO 14801',
+                'ASTM F67',
+                'ASTM F136'
+            ]
+        },
+        {
+            id: 'coronaryStent',
+            name: 'Coronary Stent',
+            category: 'cardiovascular',
+            materials: ['stainlessSteel316L', 'cobaltChromium', 'platinum', 'plga'],
+            description: 'A tube-shaped device placed in coronary arteries to keep them open and prevent restenosis after angioplasty.',
+            applications: [
+                'Treatment of coronary artery disease',
+                'Prevention of restenosis',
+                'Drug delivery to vessel walls'
+            ],
+            standards: [
+                'ISO 25539-2',
+                'ASTM F2129',
+                'ASTM F2081'
+            ]
+        },
+        {
+            id: 'spinalCage',
+            name: 'Spinal Cage',
+            category: 'orthopedic',
+            materials: ['peek', 'titanium', 'carbonFiberReinforced'],
+            description: 'An implant used in spinal fusion procedures to maintain foraminal height and decompression.',
+            applications: [
+                'Spinal fusion',
+                'Degenerative disc disease treatment',
+                'Spondylolisthesis treatment',
+                'Spinal stenosis treatment'
+            ],
+            standards: [
+                'ASTM F2077',
+                'ASTM F2267',
+                'ISO 10993'
+            ]
+        },
+        {
+            id: 'kneeImplant',
+            name: 'Knee Implant',
+            category: 'orthopedic',
+            materials: ['cobaltChromium', 'titanium', 'polyethylene', 'ceramics'],
+            description: 'A prosthetic device used to replace a damaged knee joint, typically consisting of femoral, tibial, and patellar components.',
+            applications: [
+                'Total knee replacement',
+                'Partial knee replacement',
+                'Revision knee surgery'
+            ],
+            standards: [
+                'ISO 14243',
+                'ASTM F1223',
+                'ASTM F2083'
+            ]
+        }
+    ],
+    
+    // Get all biomaterials
+    getBiomaterials: function() {
+        return this.biomaterials;
+    },
+    
+    // Get biomaterial by ID
+    getBiomaterial: function(id) {
+        return this.biomaterials.find(material => material.id === id);
+    },
+    
+    // Get biomaterials by category
+    getBiomaterialsByCategory: function(category) {
+        return this.biomaterials.filter(material => material.category === category);
+    },
+    
+    // Find material by name or synonym
+    findMaterial: function(name) {
+        if (!name) return null;
+        
+        const lowerName = name.toLowerCase();
+        
+        return this.biomaterials.find(material => {
+            // Check name
+            if (material.name.toLowerCase() === lowerName) {
+                return true;
+            }
+            
+            // Check synonyms
+            if (material.synonyms && material.synonyms.some(synonym => synonym.toLowerCase() === lowerName)) {
+                return true;
+            }
+            
+            return false;
+        });
+    },
+    
+    // Get all medical devices
+    getMedicalDevices: function() {
+        return this.medicalDevices;
+    },
+    
+    // Get medical device by ID
+    getMedicalDevice: function(id) {
+        return this.medicalDevices.find(device => device.id === id);
+    },
+    
+    // Get medical devices by category
+    getMedicalDevicesByCategory: function(category) {
+        return this.medicalDevices.filter(device => device.category === category);
+    },
+    
+    // Get medical devices by material
+    getMedicalDevicesByMaterial: function(materialId) {
+        return this.medicalDevices.filter(device => device.materials.includes(materialId));
     }
+};
 
-    // Clinical decision support
-    getClinicalGuidance(materialId, application) {
-        const material = this.getBiomaterials()[materialId];
-        if (!material) return null;
-
-        const evidence = material.researchEvidence;
-        const suitability = material.medicalApplications.includes(application) ? 'suitable' : 'review required';
-
-        return {
-            recommendation: suitability,
-            successRate: evidence.successRate,
-            contraindications: evidence.contraindications,
-            monitoring: this.getMonitoringRequirements(materialId),
-            followUp: this.getFollowUpProtocol(materialId)
-        };
-    }
-
-    getMonitoringRequirements(materialId) {
-        const monitoring = {
-            titanium: ['radiographic assessment', 'clinical examination', 'inflammatory markers'],
-            peek: ['mechanical integrity', 'wear assessment', 'bone density'],
-            nitinol: ['patency monitoring', 'nickel sensitivity testing', 'fatigue assessment'],
-            hydroxyapatite: ['bone formation markers', 'resorption assessment'],
-            uhmwpe: ['wear particle analysis', 'joint function', 'osteolysis screening']
-        };
-
-        return monitoring[materialId] || ['standard clinical monitoring'];
-    }
-
-    getFollowUpProtocol(materialId) {
-        const protocols = {
-            titanium: '3, 6, 12 months, then annually',
-            peek: '6 weeks, 3, 6, 12 months, then annually',
-            nitinol: '1, 3, 6, 12 months, then annually',
-            hydroxyapatite: '6 weeks, 3, 6, 12 months',
-            uhmwpe: 'annually with radiographic assessment'
-        };
-
-        return protocols[materialId] || 'per standard protocol';
-    }
-}
-
-// Global instance
-window.EnhancedMedicalOntology = new EnhancedMedicalOntology();
+// Make available globally
+window.EnhancedMedicalOntology = EnhancedMedicalOntology;
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

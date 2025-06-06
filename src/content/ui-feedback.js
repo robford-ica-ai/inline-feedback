@@ -1,673 +1,514 @@
 /**
- * UI Feedback System - Handles all user interface interactions
+ * UI Feedback - Provides UI feedback elements for the extension
+ * Handles notifications, tooltips, and selection menus
  */
 class UIFeedback {
-    constructor() {
+    constructor(extension) {
+        this.extension = extension;
         this.logger = new Logger('UIFeedback');
-        this.activePopups = new Set();
-        this.activeTooltips = new Set();
-        this.overlays = new Map();
-        this.animations = new Map();
+        this.notificationContainer = null;
+        this.tooltipContainer = null;
+        this.selectionMenuContainer = null;
+        this.activeTooltips = new Map();
+        this.activeNotifications = [];
+        this.config = {
+            notificationDuration: 5000, // 5 seconds
+            tooltipOffset: 10, // 10px offset
+            selectionMenuOffset: 10, // 10px offset
+            zIndex: 9999
+        };
     }
 
-    async init() {
-        this.logger.debug('Initializing UI feedback system');
-
-        // Inject CSS styles
-        this.injectStyles();
-
-        // Set up global event listeners
-        this.setupGlobalListeners();
-
-        this.logger.info('UI feedback system initialized');
+    // Initialize UI feedback
+    init() {
+        this.logger.debug('Initializing UI feedback');
+        
+        // Create containers
+        this.createContainers();
+        
+        // Add styles
+        this.addStyles();
+        
+        this.logger.info('UI feedback initialized');
     }
 
-    injectStyles() {
-        if (document.querySelector('#inline-feedback-styles')) return;
+    // Create containers for UI elements
+    createContainers() {
+        // Create notification container
+        this.notificationContainer = document.createElement('div');
+        this.notificationContainer.id = 'inline-feedback-notifications';
+        this.notificationContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            z-index: ${this.config.zIndex};
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        `;
+        document.body.appendChild(this.notificationContainer);
+        
+        // Create tooltip container
+        this.tooltipContainer = document.createElement('div');
+        this.tooltipContainer.id = 'inline-feedback-tooltips';
+        this.tooltipContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: ${this.config.zIndex};
+            pointer-events: none;
+        `;
+        document.body.appendChild(this.tooltipContainer);
+        
+        // Create selection menu container
+        this.selectionMenuContainer = document.createElement('div');
+        this.selectionMenuContainer.id = 'inline-feedback-selection-menu';
+        this.selectionMenuContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: ${this.config.zIndex};
+            display: none;
+        `;
+        document.body.appendChild(this.selectionMenuContainer);
+    }
 
+    // Add styles to the document
+    addStyles() {
         const style = document.createElement('style');
-        style.id = 'inline-feedback-styles';
-        style.textContent = this.getCSS();
+        style.textContent = `
+            .inline-feedback-notification {
+                background-color: #f8f9fa;
+                border-left: 4px solid #0d6efd;
+                border-radius: 4px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                margin-bottom: 10px;
+                padding: 12px 15px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                max-width: 100%;
+                animation: inline-feedback-fade-in 0.3s ease-out;
+            }
+            
+            .inline-feedback-notification.info {
+                border-left-color: #0d6efd;
+            }
+            
+            .inline-feedback-notification.success {
+                border-left-color: #198754;
+            }
+            
+            .inline-feedback-notification.warning {
+                border-left-color: #ffc107;
+            }
+            
+            .inline-feedback-notification.error {
+                border-left-color: #dc3545;
+            }
+            
+            .inline-feedback-notification-close {
+                float: right;
+                cursor: pointer;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+            
+            .inline-feedback-tooltip {
+                background-color: #212529;
+                color: #fff;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                max-width: 200px;
+                pointer-events: none;
+                animation: inline-feedback-fade-in 0.2s ease-out;
+            }
+            
+            .inline-feedback-selection-menu {
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                padding: 5px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                animation: inline-feedback-fade-in 0.2s ease-out;
+            }
+            
+            .inline-feedback-selection-menu-item {
+                padding: 5px 10px;
+                cursor: pointer;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+            }
+            
+            .inline-feedback-selection-menu-item:hover {
+                background-color: #e9ecef;
+            }
+            
+            .inline-feedback-selection-menu-item-icon {
+                margin-right: 5px;
+            }
+            
+            @keyframes inline-feedback-fade-in {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
         document.head.appendChild(style);
     }
 
-    getCSS() {
-        return `
-      /* Inline Feedback UI Styles */
-      .if-popup {
-        position: fixed;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        max-width: 400px;
-        min-width: 300px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: all 0.2s ease-out;
-      }
-      
-      .if-popup.show {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      
-      .if-popup-header {
-        padding: 16px 20px 12px;
-        border-bottom: 1px solid #f0f0f0;
-      }
-      
-      .if-popup-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a1a1a;
-        margin: 0 0 4px 0;
-      }
-      
-      .if-popup-subtitle {
-        font-size: 14px;
-        color: #666;
-        margin: 0;
-      }
-      
-      .if-popup-content {
-        padding: 16px 20px;
-        max-height: 300px;
-        overflow-y: auto;
-      }
-      
-      .if-popup-text {
-        font-size: 14px;
-        line-height: 1.5;
-        color: #333;
-        margin: 0;
-        white-space: pre-wrap;
-      }
-      
-      .if-popup-original {
-        background: #f8f9fa;
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 12px;
-        font-size: 13px;
-        color: #666;
-        border-left: 3px solid #e9ecef;
-      }
-      
-      .if-popup-actions {
-        padding: 12px 20px 16px;
-        border-top: 1px solid #f0f0f0;
-        display: flex;
-        gap: 8px;
-        justify-content: flex-end;
-      }
-      
-      .if-btn {
-        padding: 8px 16px;
-        border-radius: 6px;
-        border: none;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      
-      .if-btn-primary {
-        background: #007AFF;
-        color: white;
-      }
-      
-      .if-btn-primary:hover {
-        background: #0056CC;
-      }
-      
-      .if-btn-secondary {
-        background: #f1f3f4;
-        color: #5f6368;
-      }
-      
-      .if-btn-secondary:hover {
-        background: #e8eaed;
-      }
-      
-      .if-tooltip {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        max-width: 250px;
-        z-index: 10001;
-        opacity: 0;
-        transform: translateY(5px);
-        transition: all 0.2s ease-out;
-        pointer-events: none;
-      }
-      
-      .if-tooltip.show {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      
-      .if-tooltip::after {
-        content: '';
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        margin-left: -5px;
-        border: 5px solid transparent;
-        border-top-color: rgba(0, 0, 0, 0.9);
-      }
-      
-      .if-processing {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        padding: 24px;
-        z-index: 10002;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      .if-spinner {
-        width: 20px;
-        height: 20px;
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #007AFF;
-        border-radius: 50%;
-        animation: if-spin 1s linear infinite;
-      }
-      
-      @keyframes if-spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      
-      .if-selection-menu {
-        position: absolute;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        z-index: 10000;
-        opacity: 0;
-        transform: scale(0.95);
-        transition: all 0.15s ease-out;
-        overflow: hidden;
-      }
-      
-      .if-selection-menu.show {
-        opacity: 1;
-        transform: scale(1);
-      }
-      
-      .if-menu-item {
-        padding: 12px 16px;
-        border: none;
-        background: none;
-        width: 100%;
-        text-align: left;
-        font-size: 14px;
-        color: #333;
-        cursor: pointer;
-        transition: background-color 0.1s ease;
-      }
-      
-      .if-menu-item:hover {
-        background: #f8f9fa;
-      }
-      
-      .if-menu-item:not(:last-child) {
-        border-bottom: 1px solid #f0f0f0;
-      }
-      
-      .if-menu-icon {
-        display: inline-block;
-        width: 16px;
-        margin-right: 8px;
-      }
-      
-      .if-highlight {
-        background: rgba(255, 235, 59, 0.3);
-        border-radius: 2px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-      }
-      
-      .if-highlight:hover {
-        background: rgba(255, 235, 59, 0.5);
-      }
-      
-      .if-highlight-medical {
-        background: rgba(76, 175, 80, 0.2);
-        border-bottom: 2px solid rgba(76, 175, 80, 0.6);
-      }
-      
-      .if-highlight-medical:hover {
-        background: rgba(76, 175, 80, 0.3);
-      }
-      
-      .if-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.1);
-        z-index: 9999;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-      }
-      
-      .if-backdrop.show {
-        opacity: 1;
-      }
-    `;
-    }
-
-    setupGlobalListeners() {
-    // Close popups on escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeAllPopups();
-            }
+    // Show notification
+    showNotification(message, type = 'info', duration = this.config.notificationDuration) {
+        this.logger.debug(`Showing notification: ${message} (${type})`);
+        
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `inline-feedback-notification ${type}`;
+        
+        // Create close button
+        const closeButton = document.createElement('span');
+        closeButton.className = 'inline-feedback-notification-close';
+        closeButton.textContent = '×';
+        closeButton.addEventListener('click', () => {
+            this.removeNotification(notification);
         });
-
-        // Close popups on outside click
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.if-popup') && !e.target.closest('.if-selection-menu')) {
-                this.closeAllPopups();
-            }
-        });
+        
+        // Add content
+        notification.appendChild(closeButton);
+        notification.appendChild(document.createTextNode(message));
+        
+        // Add to container
+        this.notificationContainer.appendChild(notification);
+        
+        // Add to active notifications
+        this.activeNotifications.push(notification);
+        
+        // Auto-remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                this.removeNotification(notification);
+            }, duration);
+        }
+        
+        return notification;
     }
 
-    showPopup(options) {
-        const popup = this.createPopup(options);
-        document.body.appendChild(popup);
-        this.activePopups.add(popup);
-
-        // Position popup
-        this.positionPopup(popup, options.position);
-
-        // Show with animation
-        requestAnimationFrame(() => {
-            popup.classList.add('show');
-        });
-
-        return popup;
-    }
-
-    createPopup(options) {
-        const popup = document.createElement('div');
-        popup.className = 'if-popup';
-
-        // Header
-        if (options.title || options.subtitle) {
-            const header = document.createElement('div');
-            header.className = 'if-popup-header';
-
-            if (options.title) {
-                const title = document.createElement('h3');
-                title.className = 'if-popup-title';
-                title.textContent = options.title;
-                header.appendChild(title);
-            }
-
-            if (options.subtitle) {
-                const subtitle = document.createElement('p');
-                subtitle.className = 'if-popup-subtitle';
-                subtitle.textContent = options.subtitle;
-                header.appendChild(subtitle);
-            }
-
-            popup.appendChild(header);
+    // Remove notification
+    removeNotification(notification) {
+        if (!notification || !notification.parentNode) {
+            return;
         }
-
-        // Content
-        const content = document.createElement('div');
-        content.className = 'if-popup-content';
-
-        if (options.originalText) {
-            const original = document.createElement('div');
-            original.className = 'if-popup-original';
-            original.textContent = options.originalText;
-            content.appendChild(original);
-        }
-
-        const text = document.createElement('p');
-        text.className = 'if-popup-text';
-        text.textContent = options.content;
-        content.appendChild(text);
-
-        popup.appendChild(content);
-
-        // Actions
-        if (options.showOptions || options.actions) {
-            const actions = document.createElement('div');
-            actions.className = 'if-popup-actions';
-
-            if (options.showOptions) {
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'if-btn if-btn-secondary';
-                copyBtn.textContent = 'Copy';
-                copyBtn.onclick = () => {
-                    navigator.clipboard.writeText(options.content);
-                    this.showTooltip(copyBtn, 'Copied!', 'success');
-                };
-                actions.appendChild(copyBtn);
-
-                const acceptBtn = document.createElement('button');
-                acceptBtn.className = 'if-btn if-btn-primary';
-                acceptBtn.textContent = 'Accept';
-                acceptBtn.onclick = () => {
-                    if (options.onAccept) {
-                        options.onAccept({ addToNotes: true });
-                    }
-                    this.closePopup(popup);
-                };
-                actions.appendChild(acceptBtn);
-            }
-
-            if (options.actions) {
-                options.actions.forEach(action => {
-                    const btn = document.createElement('button');
-                    btn.className = `if-btn ${action.primary ? 'if-btn-primary' : 'if-btn-secondary'}`;
-                    btn.textContent = action.text;
-                    btn.onclick = () => {
-                        if (action.handler) action.handler();
-                        if (!action.keepOpen) this.closePopup(popup);
-                    };
-                    actions.appendChild(btn);
-                });
-            }
-
-            popup.appendChild(actions);
-        }
-
-        return popup;
-    }
-
-    positionPopup(popup, position) {
-        if (position) {
-            popup.style.left = `${position.x}px`;
-            popup.style.top = `${position.y}px`;
-        } else {
-            // Center on screen
-            const rect = popup.getBoundingClientRect();
-            popup.style.left = `${(window.innerWidth - rect.width) / 2}px`;
-            popup.style.top = `${(window.innerHeight - rect.height) / 2}px`;
-        }
-
-        // Ensure popup stays within viewport
-        this.keepInViewport(popup);
-    }
-
-    keepInViewport(element) {
-        const rect = element.getBoundingClientRect();
-        const padding = 20;
-
-        if (rect.right > window.innerWidth - padding) {
-            element.style.left = `${window.innerWidth - rect.width - padding}px`;
-        }
-        if (rect.left < padding) {
-            element.style.left = `${padding}px`;
-        }
-        if (rect.bottom > window.innerHeight - padding) {
-            element.style.top = `${window.innerHeight - rect.height - padding}px`;
-        }
-        if (rect.top < padding) {
-            element.style.top = `${padding}px`;
+        
+        // Remove from DOM
+        notification.parentNode.removeChild(notification);
+        
+        // Remove from active notifications
+        const index = this.activeNotifications.indexOf(notification);
+        if (index !== -1) {
+            this.activeNotifications.splice(index, 1);
         }
     }
 
-    showTooltip(target, content, type = 'default', duration = 2000) {
+    // Show tooltip
+    showTooltip(element, content, position = 'top') {
+        if (!element || !content) {
+            return null;
+        }
+        
+        // Check if element already has a tooltip
+        if (this.activeTooltips.has(element)) {
+            return this.activeTooltips.get(element);
+        }
+        
+        // Create tooltip element
         const tooltip = document.createElement('div');
-        tooltip.className = 'if-tooltip';
+        tooltip.className = 'inline-feedback-tooltip';
         tooltip.textContent = content;
-
-        document.body.appendChild(tooltip);
-        this.activeTooltips.add(tooltip);
-
-        // Position relative to target
-        const targetRect = target.getBoundingClientRect();
-        tooltip.style.left = `${targetRect.left + targetRect.width / 2 - tooltip.offsetWidth / 2}px`;
-        tooltip.style.top = `${targetRect.top - tooltip.offsetHeight - 10}px`;
-
-        this.keepInViewport(tooltip);
-
-        // Show with animation
-        requestAnimationFrame(() => {
-            tooltip.classList.add('show');
-        });
-
-        // Auto-hide after duration
-        setTimeout(() => {
-            this.closeTooltip(tooltip);
-        }, duration);
-
+        
+        // Add to container
+        this.tooltipContainer.appendChild(tooltip);
+        
+        // Position tooltip
+        this.positionTooltip(tooltip, element, position);
+        
+        // Add to active tooltips
+        this.activeTooltips.set(element, tooltip);
+        
         return tooltip;
     }
 
-    showProcessingOverlay(message = 'Processing...') {
-        const overlay = document.createElement('div');
-        overlay.className = 'if-processing';
-
-        const spinner = document.createElement('div');
-        spinner.className = 'if-spinner';
-        overlay.appendChild(spinner);
-
-        const text = document.createElement('span');
-        text.textContent = message;
-        overlay.appendChild(text);
-
-        document.body.appendChild(overlay);
-        this.overlays.set('processing', overlay);
-
-        return overlay;
+    // Position tooltip
+    positionTooltip(tooltip, element, position) {
+        const elementRect = element.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        
+        let top, left;
+        
+        switch (position) {
+            case 'top':
+                top = elementRect.top - tooltipRect.height - this.config.tooltipOffset;
+                left = elementRect.left + (elementRect.width / 2) - (tooltipRect.width / 2);
+                break;
+            case 'bottom':
+                top = elementRect.bottom + this.config.tooltipOffset;
+                left = elementRect.left + (elementRect.width / 2) - (tooltipRect.width / 2);
+                break;
+            case 'left':
+                top = elementRect.top + (elementRect.height / 2) - (tooltipRect.height / 2);
+                left = elementRect.left - tooltipRect.width - this.config.tooltipOffset;
+                break;
+            case 'right':
+                top = elementRect.top + (elementRect.height / 2) - (tooltipRect.height / 2);
+                left = elementRect.right + this.config.tooltipOffset;
+                break;
+            default:
+                top = elementRect.top - tooltipRect.height - this.config.tooltipOffset;
+                left = elementRect.left + (elementRect.width / 2) - (tooltipRect.width / 2);
+        }
+        
+        // Adjust to viewport
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (left < 0) {
+            left = 0;
+        } else if (left + tooltipRect.width > viewportWidth) {
+            left = viewportWidth - tooltipRect.width;
+        }
+        
+        if (top < 0) {
+            top = 0;
+        } else if (top + tooltipRect.height > viewportHeight) {
+            top = viewportHeight - tooltipRect.height;
+        }
+        
+        // Set position
+        tooltip.style.top = `${top + window.scrollY}px`;
+        tooltip.style.left = `${left + window.scrollX}px`;
     }
 
-    showSelectionMenu(selection, text, actions = null) {
+    // Remove tooltip
+    removeTooltip(element) {
+        if (!element || !this.activeTooltips.has(element)) {
+            return;
+        }
+        
+        const tooltip = this.activeTooltips.get(element);
+        
+        // Remove from DOM
+        if (tooltip && tooltip.parentNode) {
+            tooltip.parentNode.removeChild(tooltip);
+        }
+        
+        // Remove from active tooltips
+        this.activeTooltips.delete(element);
+    }
+
+    // Show selection menu
+    showSelectionMenu(selection, text, actions) {
+        if (!selection || !text || !actions || actions.length === 0) {
+            return null;
+        }
+        
+        this.logger.debug(`Showing selection menu for: "${text}"`);
+        
+        // Clear existing menu
+        this.selectionMenuContainer.innerHTML = '';
+        
+        // Create menu element
         const menu = document.createElement('div');
-        menu.className = 'if-selection-menu';
-
-        const defaultActions = [
-            { icon: '🌐', text: 'Translate', action: 'translate' },
-            { icon: '💡', text: 'Explain', action: 'explain' },
-            { icon: '📝', text: 'Summarize', action: 'summarize' }
-        ];
-
-        const menuActions = actions || defaultActions;
-
-        menuActions.forEach(actionDef => {
-            const item = document.createElement('button');
-            item.className = 'if-menu-item';
-
-            const icon = document.createElement('span');
-            icon.className = 'if-menu-icon';
-            icon.textContent = actionDef.icon;
-            item.appendChild(icon);
-
-            item.appendChild(document.createTextNode(actionDef.text));
-
-            item.onclick = () => {
-                if (actionDef.handler) {
-                    actionDef.handler(text);
-                } else {
-                    // Dispatch to main extension
-                    const event = new CustomEvent('inlineFeedbackAction', {
-                        detail: { action: actionDef.action, text: text }
-                    });
-                    document.dispatchEvent(event);
-                }
-                this.closeSelectionMenu(menu);
-            };
-
+        menu.className = 'inline-feedback-selection-menu';
+        
+        // Add actions
+        for (const action of actions) {
+            const item = document.createElement('div');
+            item.className = 'inline-feedback-selection-menu-item';
+            
+            // Add icon if available
+            if (action.icon) {
+                const icon = document.createElement('span');
+                icon.className = 'inline-feedback-selection-menu-item-icon';
+                icon.textContent = action.icon;
+                item.appendChild(icon);
+            }
+            
+            // Add text
+            item.appendChild(document.createTextNode(action.text));
+            
+            // Add click handler
+            item.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Hide menu
+                this.hideSelectionMenu();
+                
+                // Dispatch action event
+                this.dispatchActionEvent(action.action, text);
+            });
+            
             menu.appendChild(item);
-        });
-
-        document.body.appendChild(menu);
-
-        // Position near selection
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        menu.style.left = `${rect.left}px`;
-        menu.style.top = `${rect.bottom + 10}px`;
-
-        this.keepInViewport(menu);
-
-        // Show with animation
-        requestAnimationFrame(() => {
-            menu.classList.add('show');
-        });
-
-        // Auto-hide after 10 seconds
+        }
+        
+        // Add to container
+        this.selectionMenuContainer.appendChild(menu);
+        
+        // Position menu
+        this.positionSelectionMenu(selection);
+        
+        // Show menu
+        this.selectionMenuContainer.style.display = 'block';
+        
+        // Add click handler to hide menu when clicking outside
         setTimeout(() => {
-            this.closeSelectionMenu(menu);
-        }, 10000);
-
+            document.addEventListener('click', this.handleDocumentClick = () => {
+                this.hideSelectionMenu();
+            }, { once: true });
+        }, 0);
+        
         return menu;
     }
 
-    closePopup(popup) {
-        popup.classList.remove('show');
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.parentNode.removeChild(popup);
-            }
-            this.activePopups.delete(popup);
-        }, 200);
+    // Position selection menu
+    positionSelectionMenu(selection) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // Get menu dimensions
+        const menu = this.selectionMenuContainer.firstChild;
+        const menuRect = menu.getBoundingClientRect();
+        
+        // Calculate position
+        let top = rect.bottom + this.config.selectionMenuOffset;
+        let left = rect.left + (rect.width / 2) - (menuRect.width / 2);
+        
+        // Adjust to viewport
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (left < 0) {
+            left = 0;
+        } else if (left + menuRect.width > viewportWidth) {
+            left = viewportWidth - menuRect.width;
+        }
+        
+        if (top + menuRect.height > viewportHeight) {
+            top = rect.top - menuRect.height - this.config.selectionMenuOffset;
+        }
+        
+        // Set position
+        this.selectionMenuContainer.style.top = `${top + window.scrollY}px`;
+        this.selectionMenuContainer.style.left = `${left + window.scrollX}px`;
     }
 
-    closeTooltip(tooltip) {
-        tooltip.classList.remove('show');
-        setTimeout(() => {
-            if (tooltip.parentNode) {
-                tooltip.parentNode.removeChild(tooltip);
-            }
-            this.activeTooltips.delete(tooltip);
-        }, 200);
-    }
-
-    closeSelectionMenu(menu) {
-        menu.classList.remove('show');
-        setTimeout(() => {
-            if (menu.parentNode) {
-                menu.parentNode.removeChild(menu);
-            }
-        }, 150);
-    }
-
-    closeAllPopups() {
-        this.activePopups.forEach(popup => this.closePopup(popup));
-        this.activeTooltips.forEach(tooltip => this.closeTooltip(tooltip));
-
-        // Close overlays
-        this.overlays.forEach((overlay, key) => {
-            if (overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
-            }
-        });
-        this.overlays.clear();
-    }
-
-    highlightText(element, className = 'if-highlight') {
-        if (element.classList.contains(className)) return;
-
-        element.classList.add(className);
-
-        // Add click handler for highlights
-        element.onclick = (e) => {
-            e.stopPropagation();
-            this.handleHighlightClick(element, className);
-        };
-    }
-
-    handleHighlightClick(element, className) {
-        const text = element.textContent;
-
-        if (className === 'if-highlight-medical') {
-            // Show medical material information
-            this.showMaterialInfo(element, text);
-        } else {
-            // Show general action menu
-            const fakeSelection = {
-                getRangeAt: () => ({
-                    getBoundingClientRect: () => element.getBoundingClientRect()
-                })
-            };
-            this.showSelectionMenu(fakeSelection, text);
+    // Hide selection menu
+    hideSelectionMenu() {
+        this.selectionMenuContainer.style.display = 'none';
+        this.selectionMenuContainer.innerHTML = '';
+        
+        // Remove document click handler
+        if (this.handleDocumentClick) {
+            document.removeEventListener('click', this.handleDocumentClick);
+            this.handleDocumentClick = null;
         }
     }
 
-    showMaterialInfo(element, materialName) {
-    // This would integrate with the medical ontology
-        const rect = element.getBoundingClientRect();
-
-        this.showPopup({
-            title: materialName,
-            subtitle: 'Medical Material Information',
-            content: `Click to get detailed information about ${materialName}`,
-            position: { x: rect.left, y: rect.bottom + 10 },
-            actions: [
-                {
-                    text: 'Learn More',
-                    primary: true,
-                    handler: () => {
-                        // Trigger detailed lookup
-                        const event = new CustomEvent('inlineFeedbackAction', {
-                            detail: { action: 'explain', text: materialName }
-                        });
-                        document.dispatchEvent(event);
-                    }
-                }
-            ]
+    // Dispatch action event
+    dispatchActionEvent(action, text) {
+        this.logger.debug(`Dispatching action event: ${action} for "${text}"`);
+        
+        const event = new CustomEvent('inlineFeedbackAction', {
+            detail: {
+                action: action,
+                text: text
+            }
         });
+        
+        document.dispatchEvent(event);
     }
 
-    // Animation utilities
-    fadeIn(element, duration = 200) {
-        element.style.opacity = '0';
-        element.style.transition = `opacity ${duration}ms ease`;
-
-        requestAnimationFrame(() => {
-            element.style.opacity = '1';
+    // Show notification for action
+    showActionNotification(action, text) {
+        // Create notification content
+        const content = `
+            <div>
+                <strong>Action: ${action}</strong><br>
+                Selected text: "${text}"
+            </div>
+        `;
+        
+        // Show notification
+        const notification = document.createElement('div');
+        notification.className = 'inline-feedback-notification info';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 12px 15px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            max-width: 300px;
+            z-index: ${this.config.zIndex};
+        `;
+        
+        // Create close button
+        const closeButton = document.createElement('span');
+        closeButton.style.cssText = `
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        `;
+        closeButton.textContent = '×';
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(notification);
         });
+        
+        // Add content
+        notification.appendChild(closeButton);
+        notification.innerHTML += content;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, this.config.notificationDuration);
+        
+        return notification;
     }
 
-    slideUp(element, duration = 200) {
-        element.style.transform = 'translateY(20px)';
-        element.style.opacity = '0';
-        element.style.transition = `all ${duration}ms ease`;
-
-        requestAnimationFrame(() => {
-            element.style.transform = 'translateY(0)';
-            element.style.opacity = '1';
-        });
-    }
-
-    // Utility methods
-    isVisible() {
-        return this.activePopups.size > 0 || this.activeTooltips.size > 0;
-    }
-
-    getActiveElements() {
-        return {
-            popups: Array.from(this.activePopups),
-            tooltips: Array.from(this.activeTooltips),
-            overlays: Array.from(this.overlays.values())
-        };
+    // Hide all UI elements
+    hideAllUIElements() {
+        // Hide all notifications
+        while (this.activeNotifications.length > 0) {
+            this.removeNotification(this.activeNotifications[0]);
+        }
+        
+        // Hide all tooltips
+        for (const [element, tooltip] of this.activeTooltips.entries()) {
+            this.removeTooltip(element);
+        }
+        
+        // Hide selection menu
+        this.hideSelectionMenu();
     }
 }
 
 // Make available globally
 window.UIFeedback = UIFeedback;
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = UIFeedback;
+}

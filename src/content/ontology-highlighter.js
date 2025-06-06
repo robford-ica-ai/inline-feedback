@@ -1,579 +1,455 @@
 /**
- * Enhanced Ontology Highlighter - Detects and highlights medical materials with research evidence
+ * Ontology Highlighter - Highlights medical terms in the page
+ * Uses the medical ontology to identify and highlight terms
  */
 class OntologyHighlighter {
     constructor(ontology) {
-        this.ontology = ontology || window.EnhancedMedicalOntology;
-        this.evidenceDB = window.ResearchEvidenceDatabase;
+        this.ontology = ontology;
         this.logger = new Logger('OntologyHighlighter');
-        this.highlightedElements = new Set();
-        this.observer = null;
         this.config = {
-            highlightClass: 'if-highlight-medical',
-            evidenceClass: 'if-highlight-evidence',
-            scanDelay: 500,
-            maxScanElements: 1000,
-            enableTooltips: true,
-            enableClickActions: true,
-            enableEvidenceDisplay: true
+            enabled: true,
+            highlightClass: 'if-highlighted-term',
+            categoryClasses: {
+                metal: 'if-metal',
+                polymer: 'if-polymer',
+                ceramic: 'if-ceramic',
+                composite: 'if-composite',
+                natural: 'if-natural',
+                device: 'if-device'
+            },
+            excludeSelectors: [
+                'script', 'style', 'noscript', 'iframe', 'object', 'embed',
+                'input', 'textarea', 'select', 'button',
+                '.if-popup', '.if-notification', '.if-tooltip', '.if-selection-menu'
+            ],
+            maxTermsPerPage: 500
         };
-        this.scanTimeout = null;
+        this.highlightedTerms = new Map();
+        this.styles = {
+            loaded: false,
+            cssRules: `
+                .if-highlighted-term {
+                    border-bottom: 1px dotted;
+                    cursor: pointer;
+                    position: relative;
+                }
+                
+                .if-highlighted-term:hover {
+                    background-color: rgba(0, 0, 0, 0.05);
+                }
+                
+                .if-metal {
+                    border-bottom-color: #2196f3;
+                }
+                
+                .if-polymer {
+                    border-bottom-color: #4caf50;
+                }
+                
+                .if-ceramic {
+                    border-bottom-color: #f44336;
+                }
+                
+                .if-composite {
+                    border-bottom-color: #9c27b0;
+                }
+                
+                .if-natural {
+                    border-bottom-color: #ff9800;
+                }
+                
+                .if-device {
+                    border-bottom-color: #795548;
+                }
+            `
+        };
+        this.observer = null;
     }
 
-    async init() {
+    // Initialize the highlighter
+    init() {
         this.logger.debug('Initializing ontology highlighter');
-
-        if (!this.ontology) {
-            this.logger.warn('Medical ontology not available, loading...');
-            await this.loadOntology();
+        
+        // Load styles
+        this.loadStyles();
+        
+        // Process the page
+        if (this.config.enabled) {
+            this.processPage();
         }
-
-        // Set up mutation observer for dynamic content
-        this.setupMutationObserver();
-
-        // Set up event listeners for highlighted elements
-        this.setupEventListeners();
-
+        
+        // Set up mutation observer
+        this.setupObserver();
+        
         this.logger.info('Ontology highlighter initialized');
     }
 
-    async loadOntology() {
-        try {
-            // Try to load enhanced ontology from global scope
-            if (window.EnhancedMedicalOntology) {
-                this.ontology = window.EnhancedMedicalOntology;
-                this.evidenceDB = window.ResearchEvidenceDatabase;
-                this.logger.info('Enhanced medical ontology loaded with research evidence');
-                return;
-            }
-
-            // Fallback: load enhanced ontology from file
-            const ontologyResponse = await fetch(chrome.runtime.getURL('ontology/enhanced-medical-ontology.js'));
-            const evidenceResponse = await fetch(chrome.runtime.getURL('ontology/research-evidence-db.js'));
-
-            if (ontologyResponse.ok && evidenceResponse.ok) {
-                const ontologyScript = await ontologyResponse.text();
-                const evidenceScript = await evidenceResponse.text();
-                eval(ontologyScript);
-                eval(evidenceScript);
-                this.ontology = window.EnhancedMedicalOntology;
-                this.evidenceDB = window.ResearchEvidenceDatabase;
-                this.logger.info('Enhanced ontology and evidence database loaded');
-            }
-        } catch (error) {
-            this.logger.error('Failed to load enhanced medical ontology:', error);
-            // Use basic fallback ontology
-            this.ontology = this.getBasicOntology();
-        }
-    }
-
-    getBasicOntology() {
-        return {
-            materials: {
-                titanium: {
-                    regex: /\b(titanium|Ti-6Al-4V|Grade\s+\d+\s+titanium)\b/gi,
-                    category: 'metal',
-                    name: 'Titanium'
-                },
-                PEEK: {
-                    regex: /\b(PEEK|polyetheretherketone|poly\s*ether\s*ether\s*ketone)\b/gi,
-                    category: 'polymer',
-                    name: 'PEEK'
-                },
-                nitinol: {
-                    regex: /\b(nitinol|shape\s*memory\s*alloy|NiTi)\b/gi,
-                    category: 'shape-memory alloy',
-                    name: 'Nitinol'
-                }
-            }
-        };
-    }
-
-    setupMutationObserver() {
-        this.observer = new MutationObserver((mutations) => {
-            let shouldScan = false;
-
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    // Check if any added nodes contain text
-                    const hasTextNodes = Array.from(mutation.addedNodes).some(node =>
-                        node.nodeType === Node.TEXT_NODE ||
-            (node.nodeType === Node.ELEMENT_NODE && node.textContent.trim())
-                    );
-
-                    if (hasTextNodes) {
-                        shouldScan = true;
-                    }
-                }
-            });
-
-            if (shouldScan) {
-                this.debouncedScan();
-            }
-        });
-
-        this.observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            characterData: true
-        });
-    }
-
-    setupEventListeners() {
-    // Handle clicks on highlighted materials
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains(this.config.highlightClass)) {
-                this.handleMaterialClick(e.target, e);
-            }
-        });
-
-        // Handle hover for tooltips
-        if (this.config.enableTooltips) {
-            document.addEventListener('mouseover', (e) => {
-                if (e.target.classList.contains(this.config.highlightClass)) {
-                    this.handleMaterialHover(e.target, e);
-                }
-            });
-
-            document.addEventListener('mouseout', (e) => {
-                if (e.target.classList.contains(this.config.highlightClass)) {
-                    this.handleMaterialHoverOut(e.target, e);
-                }
-            });
-        }
-    }
-
-    debouncedScan() {
-        if (this.scanTimeout) {
-            clearTimeout(this.scanTimeout);
-        }
-
-        this.scanTimeout = setTimeout(() => {
-            this.highlightDocument();
-        }, this.config.scanDelay);
-    }
-
-    highlightDocument() {
-        this.logger.debug('Starting document scan for medical materials');
-
-        const startTime = performance.now();
-        let highlightCount = 0;
-
-        try {
-            // Get all text nodes in the document
-            const textNodes = this.getTextNodes(document.body);
-
-            // Limit processing for performance
-            const nodesToProcess = textNodes.slice(0, this.config.maxScanElements);
-
-            for (const textNode of nodesToProcess) {
-                const highlights = this.highlightTextNode(textNode);
-                highlightCount += highlights;
-            }
-
-            const endTime = performance.now();
-            this.logger.info(`Highlighted ${highlightCount} materials in ${Math.round(endTime - startTime)}ms`);
-
-        } catch (error) {
-            this.logger.error('Error during document highlighting:', error);
-        }
-    }
-
-    getTextNodes(element) {
-        const textNodes = [];
-        const walker = document.createTreeWalker(
-            element,
-            NodeFilter.SHOW_TEXT,
-            {
-                acceptNode: (node) => {
-                    // Skip script, style, and other non-content elements
-                    const parent = node.parentElement;
-                    if (!parent) return NodeFilter.FILTER_REJECT;
-
-                    const tagName = parent.tagName.toLowerCase();
-                    if (['script', 'style', 'noscript', 'iframe'].includes(tagName)) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    // Skip already highlighted content
-                    if (parent.classList.contains(this.config.highlightClass)) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    // Skip empty or whitespace-only nodes
-                    if (!node.textContent.trim()) {
-                        return NodeFilter.FILTER_REJECT;
-                    }
-
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-            }
-        );
-
-        let node;
-        while (node = walker.nextNode()) {
-            textNodes.push(node);
-        }
-
-        return textNodes;
-    }
-
-    highlightTextNode(textNode) {
-        if (!textNode.textContent.trim()) return 0;
-
-        const originalText = textNode.textContent;
-        let modifiedText = originalText;
-        const matches = [];
-
-        // Find all material matches using enhanced ontology
-        if (this.ontology && this.ontology.getBiomaterials) {
-            const biomaterials = this.ontology.getBiomaterials();
-            for (const [materialId, material] of Object.entries(biomaterials)) {
-                if (!material.regex) continue;
-
-                const regex = new RegExp(material.regex.source, 'gi');
-                let match;
-
-                while ((match = regex.exec(originalText)) !== null) {
-                    matches.push({
-                        materialId,
-                        material,
-                        match: match[0],
-                        start: match.index,
-                        end: match.index + match[0].length
-                    });
-                }
-            }
-        } else if (this.ontology && this.ontology.materials) {
-            // Fallback for basic ontology
-            for (const [materialId, material] of Object.entries(this.ontology.materials)) {
-                if (!material.regex) continue;
-
-                const regex = new RegExp(material.regex.source, 'gi');
-                let match;
-
-                while ((match = regex.exec(originalText)) !== null) {
-                    matches.push({
-                        materialId,
-                        material,
-                        match: match[0],
-                        start: match.index,
-                        end: match.index + match[0].length
-                    });
-                }
-            }
-        }
-
-        // Sort matches by position (descending to avoid offset issues)
-        matches.sort((a, b) => b.start - a.start);
-
-        if (matches.length === 0) return 0;
-
-        // Apply highlights
-        let highlightCount = 0;
-        for (const matchInfo of matches) {
-            const before = modifiedText.substring(0, matchInfo.start);
-            const matchText = modifiedText.substring(matchInfo.start, matchInfo.end);
-            const after = modifiedText.substring(matchInfo.end);
-
-            const highlightSpan = `<span class="${this.config.highlightClass}" data-material="${matchInfo.materialId}" data-category="${matchInfo.material.category}" title="Medical Material: ${matchInfo.material.name}">${matchText}</span>`;
-
-            modifiedText = before + highlightSpan + after;
-            highlightCount++;
-        }
-
-        // Replace the text node with highlighted HTML
-        if (highlightCount > 0) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = modifiedText;
-
-            const parent = textNode.parentNode;
-            const fragment = document.createDocumentFragment();
-
-            while (tempDiv.firstChild) {
-                fragment.appendChild(tempDiv.firstChild);
-            }
-
-            parent.replaceChild(fragment, textNode);
-
-            // Track highlighted elements
-            parent.querySelectorAll(`.${this.config.highlightClass}`).forEach(el => {
-                this.highlightedElements.add(el);
-            });
-        }
-
-        return highlightCount;
-    }
-
-    handleMaterialClick(element, event) {
-        if (!this.config.enableClickActions) return;
-
-        event.stopPropagation();
-
-        const materialId = element.dataset.material;
-        const materialName = element.textContent;
-
-        this.logger.debug(`Material clicked: ${materialName} (${materialId})`);
-
-        // Show material information popup
-        this.showMaterialPopup(element, materialId, materialName);
-    }
-
-    handleMaterialHover(element, event) {
-        const materialId = element.dataset.material;
-        const material = this.getMaterialInfo(materialId);
-
-        if (!material) return;
-
-        // Show tooltip with basic material info
-        const tooltipText = `${material.name} - ${material.category}`;
-
-        // Use UI feedback system if available
-        if (window.inlineFeedbackExtension?.components?.get('uiFeedback')) {
-            const uiFeedback = window.inlineFeedbackExtension.components.get('uiFeedback');
-            uiFeedback.showTooltip(element, tooltipText, 'medical', 3000);
-        }
-    }
-
-    handleMaterialHoverOut(element, event) {
-    // Tooltip will auto-hide
-    }
-
-    showMaterialPopup(element, materialId, materialName) {
-        const material = this.getMaterialInfo(materialId);
-
-        if (!material) {
-            this.logger.warn(`Material info not found for: ${materialId}`);
+    // Load styles
+    loadStyles() {
+        if (this.styles.loaded) return;
+        
+        // Check if styles are already loaded
+        if (document.getElementById('inline-feedback-highlighter-styles')) {
+            this.styles.loaded = true;
             return;
         }
+        
+        // Create style element
+        const style = document.createElement('style');
+        style.id = 'inline-feedback-highlighter-styles';
+        style.textContent = this.styles.cssRules;
+        
+        // Add to document
+        document.head.appendChild(style);
+        
+        this.styles.loaded = true;
+        this.logger.debug('Highlighter styles loaded');
+    }
 
-        const rect = element.getBoundingClientRect();
+    // Process the page
+    processPage() {
+        this.logger.debug('Processing page for medical terms');
+        
+        // Reset highlighted terms
+        this.highlightedTerms.clear();
+        
+        // Process body
+        this.processNode(document.body);
+        
+        this.logger.info(`Page processed, found ${this.highlightedTerms.size} terms`);
+    }
 
-        // Use UI feedback system if available
-        if (window.inlineFeedbackExtension?.components?.get('uiFeedback')) {
-            const uiFeedback = window.inlineFeedbackExtension.components.get('uiFeedback');
+    // Process a node
+    processNode(node) {
+        if (!node || !this.config.enabled) return;
+        
+        // Check if we've reached the maximum number of terms
+        if (this.highlightedTerms.size >= this.config.maxTermsPerPage) {
+            this.logger.warn(`Maximum number of terms (${this.config.maxTermsPerPage}) reached, stopping processing`);
+            return;
+        }
+        
+        // Skip excluded elements
+        if (this.isExcluded(node)) {
+            return;
+        }
+        
+        // Process text nodes
+        if (node.nodeType === Node.TEXT_NODE) {
+            this.processTextNode(node);
+            return;
+        }
+        
+        // Process element nodes
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // Skip if already processed
+            if (node.getAttribute('data-if-processed') === 'true') {
+                return;
+            }
+            
+            // Process child nodes
+            for (const child of Array.from(node.childNodes)) {
+                this.processNode(child);
+            }
+            
+            // Mark as processed
+            node.setAttribute('data-if-processed', 'true');
+        }
+    }
 
-            uiFeedback.showPopup({
-                title: material.name,
-                subtitle: `Medical Material - ${material.category}`,
-                content: this.generateMaterialDescription(material),
-                position: { x: rect.left, y: rect.bottom + 10 },
-                actions: [
-                    {
-                        text: 'Learn More',
-                        primary: true,
-                        handler: () => {
-                            this.requestDetailedInfo(materialId, materialName);
-                        }
-                    },
-                    {
-                        text: 'Properties',
-                        handler: () => {
-                            this.showMaterialProperties(materialId);
-                        }
+    // Process a text node
+    processTextNode(node) {
+        if (!node || !node.textContent || node.textContent.trim() === '') return;
+        
+        const text = node.textContent;
+        const terms = this.findMedicalTerms(text);
+        
+        if (terms.length === 0) return;
+        
+        // Create a document fragment
+        const fragment = document.createDocumentFragment();
+        
+        // Keep track of the last index
+        let lastIndex = 0;
+        
+        // Process each term
+        for (const term of terms) {
+            // Add text before the term
+            if (term.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(text.substring(lastIndex, term.index)));
+            }
+            
+            // Create highlighted element
+            const span = document.createElement('span');
+            span.className = `${this.config.highlightClass} ${this.getCategoryClass(term.category)}`;
+            span.textContent = term.text;
+            span.setAttribute('data-if-term-id', term.id);
+            span.setAttribute('data-if-term-category', term.category);
+            span.setAttribute('title', `${term.name} (${term.category})`);
+            
+            // Add click event
+            span.addEventListener('click', (event) => {
+                this.handleTermClick(event, term);
+            });
+            
+            // Add to fragment
+            fragment.appendChild(span);
+            
+            // Update last index
+            lastIndex = term.index + term.text.length;
+            
+            // Add to highlighted terms
+            this.highlightedTerms.set(term.id, {
+                id: term.id,
+                name: term.name,
+                text: term.text,
+                category: term.category,
+                element: span
+            });
+        }
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+        }
+        
+        // Replace the text node with the fragment
+        if (node.parentNode) {
+            node.parentNode.replaceChild(fragment, node);
+        }
+    }
+
+    // Find medical terms in text
+    findMedicalTerms(text) {
+        if (!text || !this.ontology) return [];
+        
+        const terms = [];
+        
+        // Get all biomaterials
+        const biomaterials = this.ontology.getBiomaterials();
+        
+        if (!biomaterials) return [];
+        
+        // Check each material
+        for (const material of biomaterials) {
+            // Skip if no name
+            if (!material.name) continue;
+            
+            // Create regex for the material name
+            const regex = new RegExp(`\\b${material.name}\\b`, 'gi');
+            
+            // Find all matches
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                terms.push({
+                    id: material.id,
+                    name: material.name,
+                    text: match[0],
+                    index: match.index,
+                    category: material.category
+                });
+            }
+            
+            // Check synonyms
+            if (material.synonyms && material.synonyms.length > 0) {
+                for (const synonym of material.synonyms) {
+                    // Skip if no synonym
+                    if (!synonym) continue;
+                    
+                    // Create regex for the synonym
+                    const synonymRegex = new RegExp(`\\b${synonym}\\b`, 'gi');
+                    
+                    // Find all matches
+                    let synonymMatch;
+                    while ((synonymMatch = synonymRegex.exec(text)) !== null) {
+                        terms.push({
+                            id: material.id,
+                            name: material.name,
+                            text: synonymMatch[0],
+                            index: synonymMatch.index,
+                            category: material.category
+                        });
                     }
-                ]
-            });
-        }
-    }
-
-    generateMaterialDescription(material) {
-        let description = `Category: ${material.category}\n`;
-
-        // Add evidence-based information
-        if (material.researchEvidence) {
-            const evidence = material.researchEvidence;
-            description += `Clinical Success Rate: ${evidence.successRate}\n`;
-            description += `Evidence Level: ${evidence.evidenceLevel} (${evidence.studyCount} studies)\n\n`;
-        }
-
-        if (material.properties) {
-            description += 'Key Properties:\n';
-            for (const [key, value] of Object.entries(material.properties)) {
-                description += `• ${key}: ${value}\n`;
-            }
-            description += '\n';
-        }
-
-        if (material.medicalApplications) {
-            description += 'Medical Applications:\n';
-            material.medicalApplications.forEach(use => {
-                description += `• ${use}\n`;
-            });
-            description += '\n';
-        }
-
-        if (material.fdaClassification) {
-            description += `FDA Classification: ${material.fdaClassification}\n`;
-        }
-
-        // Add biocompatibility findings
-        if (material.biologicalEffects) {
-            description += '\nBiocompatibility:\n';
-            description += `• ${material.biologicalEffects.biocompatibility}\n`;
-            if (material.biologicalEffects.osseointegration) {
-                description += `• Osseointegration: ${material.biologicalEffects.osseointegration}\n`;
-            }
-        }
-
-        // Add contraindications if available
-        if (material.researchEvidence?.contraindications) {
-            description += `\nContraindications: ${material.researchEvidence.contraindications.join(', ')}\n`;
-        }
-
-        description += '\nClick \'Learn More\' for research citations and detailed analysis.';
-
-        return description;
-    }
-
-    requestDetailedInfo(materialId, materialName) {
-    // Get research evidence if available
-        const material = this.getMaterialInfo(materialId);
-        const researchContext = {};
-
-        if (material?.researchEvidence?.pmidReferences) {
-            researchContext.pmids = material.researchEvidence.pmidReferences;
-            researchContext.studyCount = material.researchEvidence.studyCount;
-            researchContext.evidenceLevel = material.researchEvidence.evidenceLevel;
-        }
-
-        // Trigger detailed lookup via the main extension with research context
-        const event = new CustomEvent('inlineFeedbackAction', {
-            detail: {
-                action: 'medical-explain',
-                text: materialName,
-                context: {
-                    materialId,
-                    source: 'enhanced-ontology',
-                    research: researchContext,
-                    properties: material?.properties,
-                    applications: material?.medicalApplications,
-                    contraindications: material?.researchEvidence?.contraindications
                 }
             }
-        });
-        document.dispatchEvent(event);
+        }
+        
+        // Sort by index
+        terms.sort((a, b) => a.index - b.index);
+        
+        // Remove overlapping terms
+        const filteredTerms = [];
+        let lastEnd = -1;
+        
+        for (const term of terms) {
+            const end = term.index + term.text.length;
+            
+            if (term.index >= lastEnd) {
+                filteredTerms.push(term);
+                lastEnd = end;
+            }
+        }
+        
+        return filteredTerms;
     }
 
-    showMaterialProperties(materialId) {
-        const material = this.getMaterialInfo(materialId);
-        if (!material || !material.properties) return;
-
-        // Create a detailed properties display
-        let propertiesText = `Detailed Properties for ${material.name}:\n\n`;
-
-        for (const [key, value] of Object.entries(material.properties)) {
-            propertiesText += `${key}: ${value}\n`;
+    // Handle term click
+    handleTermClick(event, term) {
+        this.logger.debug(`Term clicked: ${term.name} (${term.category})`);
+        
+        // Get UI feedback component
+        const uiFeedback = this.extension?.components.get('uiFeedback');
+        
+        if (!uiFeedback) {
+            this.logger.warn('UI Feedback component not available');
+            return;
         }
-
-        if (material.standards) {
-            propertiesText += '\nApplicable Standards:\n';
-            material.standards.forEach(standard => {
-                propertiesText += `• ${standard}\n`;
+        
+        // Show tooltip
+        uiFeedback.showTooltip(event.target, `${term.name} (${term.category})`, 'info', 2000);
+        
+        // Process selection
+        if (this.extension && typeof this.extension.processSelection === 'function') {
+            this.extension.processSelection('medical-explain', term.name, {
+                termId: term.id,
+                termCategory: term.category,
+                element: event.target
             });
         }
+    }
 
-        if (window.inlineFeedbackExtension?.components?.get('uiFeedback')) {
-            const uiFeedback = window.inlineFeedbackExtension.components.get('uiFeedback');
+    // Get category class
+    getCategoryClass(category) {
+        return this.config.categoryClasses[category] || '';
+    }
 
-            uiFeedback.showPopup({
-                title: `${material.name} Properties`,
-                subtitle: 'Technical Specifications',
-                content: propertiesText,
-                actions: [
-                    {
-                        text: 'Copy Properties',
-                        handler: () => {
-                            navigator.clipboard.writeText(propertiesText);
-                        }
-                    }
-                ]
-            });
+    // Check if node is excluded
+    isExcluded(node) {
+        if (!node) return true;
+        
+        // Check node type
+        if (node.nodeType !== Node.TEXT_NODE && node.nodeType !== Node.ELEMENT_NODE) {
+            return true;
         }
-    }
-
-    getMaterialInfo(materialId) {
-        if (this.ontology?.getBiomaterials) {
-            const biomaterials = this.ontology.getBiomaterials();
-            return biomaterials[materialId];
-        } else if (this.ontology?.materials) {
-            // Fallback for basic ontology
-            return this.ontology.materials[materialId];
+        
+        // Check if it's a text node with a parent that is excluded
+        if (node.nodeType === Node.TEXT_NODE && node.parentNode) {
+            return this.isExcluded(node.parentNode);
         }
-        return null;
-    }
-
-    // Public API methods
-    scanElement(element) {
-        const textNodes = this.getTextNodes(element);
-        let totalHighlights = 0;
-
-        for (const textNode of textNodes) {
-            totalHighlights += this.highlightTextNode(textNode);
+        
+        // Check if it's an element that is excluded
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check tag name
+            const tagName = node.tagName.toLowerCase();
+            
+            if (this.config.excludeSelectors.includes(tagName)) {
+                return true;
+            }
+            
+            // Check class names
+            for (const selector of this.config.excludeSelectors) {
+                if (selector.startsWith('.') && node.classList.contains(selector.substring(1))) {
+                    return true;
+                }
+            }
+            
+            // Check if it's a highlighted term
+            if (node.classList.contains(this.config.highlightClass)) {
+                return true;
+            }
         }
-
-        return totalHighlights;
+        
+        return false;
     }
 
-    removeHighlights(element = document.body) {
-        const highlights = element.querySelectorAll(`.${this.config.highlightClass}`);
-
-        highlights.forEach(highlight => {
-            const parent = highlight.parentNode;
-            parent.replaceChild(document.createTextNode(highlight.textContent), highlight);
-            parent.normalize(); // Merge adjacent text nodes
-            this.highlightedElements.delete(highlight);
-        });
-
-        return highlights.length;
-    }
-
-    getHighlightStats() {
-        const materialCounts = {};
-
-        this.highlightedElements.forEach(element => {
-            const materialId = element.dataset.material;
-            materialCounts[materialId] = (materialCounts[materialId] || 0) + 1;
-        });
-
-        // Get available materials from enhanced ontology
-        let availableMaterials = [];
-        if (this.ontology?.getBiomaterials) {
-            availableMaterials = Object.keys(this.ontology.getBiomaterials());
-        } else if (this.ontology?.materials) {
-            availableMaterials = Object.keys(this.ontology.materials);
-        }
-
-        return {
-            totalHighlights: this.highlightedElements.size,
-            materialCounts,
-            availableMaterials,
-            evidenceLevel: this.ontology?.evidenceLevel || 'basic',
-            researchBacked: !!this.evidenceDB
-        };
-    }
-
-    isEnabled() {
-        return !!this.ontology;
-    }
-
-    setConfig(newConfig) {
-        this.config = { ...this.config, ...newConfig };
-    }
-
-    destroy() {
+    // Set up mutation observer
+    setupObserver() {
         if (this.observer) {
             this.observer.disconnect();
         }
+        
+        this.observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                // Process added nodes
+                if (mutation.type === 'childList') {
+                    for (const node of Array.from(mutation.addedNodes)) {
+                        this.processNode(node);
+                    }
+                }
+            }
+        });
+        
+        // Start observing
+        this.observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        this.logger.debug('Mutation observer set up');
+    }
 
-        if (this.scanTimeout) {
-            clearTimeout(this.scanTimeout);
+    // Enable highlighting
+    enable() {
+        this.config.enabled = true;
+        this.processPage();
+        this.logger.info('Highlighting enabled');
+    }
+
+    // Disable highlighting
+    disable() {
+        this.config.enabled = false;
+        this.logger.info('Highlighting disabled');
+    }
+
+    // Get highlight stats
+    getHighlightStats() {
+        const stats = {
+            total: this.highlightedTerms.size,
+            byCategory: {}
+        };
+        
+        // Count by category
+        for (const term of this.highlightedTerms.values()) {
+            if (!stats.byCategory[term.category]) {
+                stats.byCategory[term.category] = 0;
+            }
+            
+            stats.byCategory[term.category]++;
         }
+        
+        return stats;
+    }
 
-        this.removeHighlights();
-        this.highlightedElements.clear();
+    // Get highlighted terms
+    getHighlightedTerms() {
+        return Array.from(this.highlightedTerms.values());
+    }
+
+    // Get highlighted terms in element
+    getHighlightedTermsInElement(element) {
+        if (!element) return [];
+        
+        const terms = [];
+        
+        // Find all highlighted terms in the element
+        const highlightedElements = element.querySelectorAll(`.${this.config.highlightClass}`);
+        
+        for (const highlightedElement of highlightedElements) {
+            const termId = highlightedElement.getAttribute('data-if-term-id');
+            
+            if (termId && this.highlightedTerms.has(termId)) {
+                terms.push(this.highlightedTerms.get(termId));
+            }
+        }
+        
+        return terms;
     }
 }
 
 // Make available globally
 window.OntologyHighlighter = OntologyHighlighter;
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = OntologyHighlighter;
+}
