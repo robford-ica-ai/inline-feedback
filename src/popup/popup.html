@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inline Feedback</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <header class="popup-header">
+            <h1>Inline Feedback</h1>
+            <div class="version">v1.0.0</div>
+        </header>
+
+        <main class="popup-main">
+            <div class="status-section">
+                <div class="status-indicator" id="statusIndicator">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Ready</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Settings</h3>
+                
+                <div class="setting-item">
+                    <label for="apiKey">Claude API Key:</label>
+                    <div class="api-key-container">
+                        <input type="password" id="apiKey" placeholder="Enter your API key">
+                        <button id="saveApiKey" class="btn-save">Save</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="modelSelect">Model:</label>
+                    <select id="modelSelect">
+                        <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                        <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                        <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoTranslate">
+                        <span class="checkmark"></span>
+                        Auto-translate on hover
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="ontologyMode" checked>
+                        <span class="checkmark"></span>
+                        Medical term highlighting
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="debugMode">
+                        <span class="checkmark"></span>
+                        Debug mode
+                    </label>
+                </div>
+            </div>
+
+            <div class="actions-section">
+                <button id="testConnection" class="btn-primary">Test Connection</button>
+                <button id="clearData" class="btn-secondary">Clear Data</button>
+            </div>
+        </main>
+
+        <footer class="popup-footer">
+            <div class="shortcuts">
+                <strong>Shortcuts:</strong><br>
+                Ctrl+Shift+T: Translate<br>
+                Ctrl+Shift+E: Explain
+            </div>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html> 
