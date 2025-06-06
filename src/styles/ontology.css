@@ -1,0 +1,388 @@
+/**
+ * Inline Feedback Extension - Ontology Styles
+ * Specific styles for medical term highlighting and categorization
+ */
+
+/* Base highlighting for ontology terms */
+.ontology-term {
+    position: relative;
+    border-radius: 3px;
+    padding: 1px 3px;
+    margin: 0 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline;
+}
+
+.ontology-term:hover {
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Material categories */
+.ontology-term.material {
+    background: rgba(239, 68, 68, 0.1);
+    border-bottom: 2px solid rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+}
+
+.ontology-term.material:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-bottom-color: #dc2626;
+}
+
+.ontology-term.material.metal {
+    background: rgba(107, 114, 128, 0.1);
+    border-bottom-color: rgba(107, 114, 128, 0.4);
+    color: #374151;
+}
+
+.ontology-term.material.polymer {
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom-color: rgba(59, 130, 246, 0.4);
+    color: #1d4ed8;
+}
+
+.ontology-term.material.ceramic {
+    background: rgba(251, 191, 36, 0.1);
+    border-bottom-color: rgba(251, 191, 36, 0.4);
+    color: #d97706;
+}
+
+.ontology-term.material.composite {
+    background: rgba(139, 69, 19, 0.1);
+    border-bottom-color: rgba(139, 69, 19, 0.4);
+    color: #92400e;
+}
+
+/* Device categories */
+.ontology-term.device {
+    background: rgba(16, 185, 129, 0.1);
+    border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+    color: #047857;
+}
+
+.ontology-term.device:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-bottom-color: #047857;
+}
+
+.ontology-term.device.implant {
+    background: rgba(168, 85, 247, 0.1);
+    border-bottom-color: rgba(168, 85, 247, 0.4);
+    color: #7c3aed;
+}
+
+.ontology-term.device.instrument {
+    background: rgba(34, 197, 94, 0.1);
+    border-bottom-color: rgba(34, 197, 94, 0.4);
+    color: #16a34a;
+}
+
+/* Medical procedure terms */
+.ontology-term.procedure {
+    background: rgba(245, 101, 101, 0.1);
+    border-bottom: 2px solid rgba(245, 101, 101, 0.3);
+    color: #dc2626;
+}
+
+.ontology-term.procedure:hover {
+    background: rgba(245, 101, 101, 0.2);
+    border-bottom-color: #dc2626;
+}
+
+/* Anatomical terms */
+.ontology-term.anatomy {
+    background: rgba(156, 163, 175, 0.1);
+    border-bottom: 2px solid rgba(156, 163, 175, 0.3);
+    color: #4b5563;
+}
+
+.ontology-term.anatomy:hover {
+    background: rgba(156, 163, 175, 0.2);
+    border-bottom-color: #4b5563;
+}
+
+/* Measurement and units */
+.ontology-term.measurement {
+    background: rgba(14, 165, 233, 0.1);
+    border-bottom: 2px solid rgba(14, 165, 233, 0.3);
+    color: #0284c7;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.95em;
+}
+
+.ontology-term.measurement:hover {
+    background: rgba(14, 165, 233, 0.2);
+    border-bottom-color: #0284c7;
+}
+
+/* Chemical formulas */
+.ontology-term.chemical {
+    background: rgba(168, 85, 247, 0.1);
+    border-bottom: 2px solid rgba(168, 85, 247, 0.3);
+    color: #7c3aed;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.95em;
+}
+
+.ontology-term.chemical:hover {
+    background: rgba(168, 85, 247, 0.2);
+    border-bottom-color: #7c3aed;
+}
+
+/* Medical abbreviations */
+.ontology-term.abbreviation {
+    background: rgba(251, 146, 60, 0.1);
+    border-bottom: 2px solid rgba(251, 146, 60, 0.3);
+    color: #ea580c;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.ontology-term.abbreviation:hover {
+    background: rgba(251, 146, 60, 0.2);
+    border-bottom-color: #ea580c;
+}
+
+/* High confidence terms */
+.ontology-term.high-confidence {
+    border-width: 3px;
+    font-weight: 500;
+}
+
+.ontology-term.medium-confidence {
+    border-width: 2px;
+}
+
+.ontology-term.low-confidence {
+    border-width: 1px;
+    opacity: 0.8;
+}
+
+/* Special highlighting states */
+.ontology-term.selected {
+    background: rgba(102, 126, 234, 0.3) !important;
+    border-bottom: 3px solid #667eea !important;
+    color: #3730a3 !important;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.ontology-term.highlighted {
+    animation: highlightPulse 1.5s ease-in-out;
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        background-color: inherit;
+    }
+    50% {
+        background-color: rgba(255, 255, 0, 0.3);
+    }
+}
+
+/* Tooltip indicators */
+.ontology-term::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+    font-size: 6px;
+}
+
+.ontology-term.material::after {
+    background: #dc2626;
+}
+
+.ontology-term.device::after {
+    background: #047857;
+}
+
+.ontology-term.procedure::after {
+    background: #dc2626;
+}
+
+.ontology-term.anatomy::after {
+    background: #4b5563;
+}
+
+.ontology-term.measurement::after {
+    background: #0284c7;
+}
+
+.ontology-term.chemical::after {
+    background: #7c3aed;
+}
+
+.ontology-term.abbreviation::after {
+    background: #ea580c;
+}
+
+/* Context-specific styling */
+.clinical-context .ontology-term {
+    border-style: solid;
+}
+
+.research-context .ontology-term {
+    border-style: dashed;
+}
+
+.technical-context .ontology-term {
+    border-style: dotted;
+}
+
+.regulatory-context .ontology-term {
+    border-style: double;
+    border-width: 3px;
+}
+
+/* Progressive disclosure */
+.ontology-mode-basic .ontology-term.low-confidence {
+    display: none;
+}
+
+.ontology-mode-detailed .ontology-term {
+    display: inline;
+}
+
+/* Legend/key for term types */
+.ontology-legend {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-size: 12px;
+    z-index: 999998;
+    max-width: 200px;
+    opacity: 0.9;
+}
+
+.ontology-legend.hidden {
+    display: none;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-color.material { background: rgba(239, 68, 68, 0.3); }
+.legend-color.device { background: rgba(16, 185, 129, 0.3); }
+.legend-color.procedure { background: rgba(245, 101, 101, 0.3); }
+.legend-color.anatomy { background: rgba(156, 163, 175, 0.3); }
+.legend-color.measurement { background: rgba(14, 165, 233, 0.3); }
+.legend-color.chemical { background: rgba(168, 85, 247, 0.3); }
+.legend-color.abbreviation { background: rgba(251, 146, 60, 0.3); }
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .ontology-term {
+        transition: none;
+    }
+    
+    .ontology-term:hover {
+        transform: none;
+    }
+    
+    .ontology-term.highlighted {
+        animation: none;
+        background-color: rgba(255, 255, 0, 0.3);
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .ontology-term {
+        border-width: 2px;
+        font-weight: 600;
+    }
+    
+    .ontology-term.material {
+        background: rgba(239, 68, 68, 0.2);
+        color: #000;
+    }
+    
+    .ontology-term.device {
+        background: rgba(16, 185, 129, 0.2);
+        color: #000;
+    }
+}
+
+/* Print styles */
+@media print {
+    .ontology-term {
+        background: none !important;
+        border-bottom: 1px solid #000 !important;
+        color: #000 !important;
+    }
+    
+    .ontology-legend {
+        display: none;
+    }
+    
+    .ontology-term::after {
+        display: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .ontology-legend {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+    }
+    
+    .ontology-term.material {
+        color: #fca5a5;
+    }
+    
+    .ontology-term.device {
+        color: #6ee7b7;
+    }
+    
+    .ontology-term.procedure {
+        color: #fca5a5;
+    }
+    
+    .ontology-term.anatomy {
+        color: #d1d5db;
+    }
+    
+    .ontology-term.measurement {
+        color: #7dd3fc;
+    }
+    
+    .ontology-term.chemical {
+        color: #c4b5fd;
+    }
+    
+    .ontology-term.abbreviation {
+        color: #fdba74;
+    }
+} 
